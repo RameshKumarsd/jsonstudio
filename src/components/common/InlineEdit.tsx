@@ -10,8 +10,8 @@ interface InlineEditProps {
 }
 
 /**
- * Compact inline text field for renaming keys and editing primitive values.
- * Commits on Enter/blur, cancels on Escape.
+ * Compact inline text field for renaming (keys, values, document tabs). Commits
+ * on Enter/blur, cancels on Escape.
  */
 export function InlineEdit({
   initial,
@@ -35,6 +35,7 @@ export function InlineEdit({
       aria-label={ariaLabel}
       spellCheck={false}
       onChange={(event) => setValue(event.target.value)}
+      onClick={(event) => event.stopPropagation()}
       onKeyDown={(event) => {
         if (event.key === 'Enter') {
           event.preventDefault()

@@ -138,3 +138,90 @@ export function reorderWithinParent(
   entries.splice(toIndex, 0, moved)
   return setAtPath(root, parentPath, Object.fromEntries(entries))
 }
+
+function pathsEqual(a: JsonPath, b: JsonPath): boolean {
+  return a.length === b.length && a.every((seg, i) => seg === b[i])
+}
+
+/** True if `prefix` is an ancestor-or-equal path of `path`. */
+function isPrefix(prefix: JsonPath, path: JsonPath): boolean {
+  return (
+    prefix.length <= path.length &&
+    pathsEqual(prefix, path.slice(0, prefix.length))
+  )
+}
+
+function uniqueKeyName(base: string, existing: string[]): string {
+  if (!existing.includes(base)) return base
+  let counter = 2
+  while (existing.includes(`${base}${counter}`)) counter += 1
+  return `${base}${counter}`
+}
+
+// When an array element is removed, indices after it in that array shift down by
+// one — adjust a target path that traverses the same array past the removed index.
+function adjustPathAfterRemoval(
+  fromPath: JsonPath,
+  targetPath: JsonPath,
+): JsonPath {
+  const fromParent = fromPath.slice(0, -1)
+  const fromKey = fromPath[fromPath.length - 1]
+  if (typeof fromKey !== 'number') return targetPath
+  if (
+    targetPath.length <= fromParent.length ||
+    !pathsEqual(fromParent, targetPath.slice(0, fromParent.length))
+  ) {
+    return targetPath
+  }
+  const seg = targetPath[fromParent.length]
+  if (typeof seg === 'number' && seg > fromKey) {
+    const adjusted = [...targetPath]
+    adjusted[fromParent.length] = seg - 1
+    return adjusted
+  }
+  return targetPath
+}
+
+/**
+ * Move a node to a position within another container (drag-and-drop across
+ * parents). Same-parent moves reorder; cross-parent array targets insert at the
+ * index, object targets keep the source key (uniquified). No-op when dropping a
+ * node into its own subtree.
+ */
+export function moveNode(
+  root: JsonValue,
+  fromPath: JsonPath,
+  toParentPath: JsonPath,
+  toIndex: number,
+): JsonValue {
+  if (fromPath.length === 0) return root
+  if (isPrefix(fromPath, toParentPath)) return root
+
+  const value = getAtPath(root, fromPath)
+  if (value === undefined) return root
+
+  const fromParent = fromPath.slice(0, -1)
+  const fromKey = fromPath[fromPath.length - 1]
+
+  if (pathsEqual(fromParent, toParentPath)) {
+    const parent = getAtPath(root, toParentPath)
+    if (!isContainer(parent)) return root
+    const fromIndex = Array.isArray(parent)
+      ? Number(fromKey)
+      : Object.keys(parent).indexOf(String(fromKey))
+    return reorderWithinParent(root, toParentPath, fromIndex, toIndex)
+  }
+
+  const removed = removeAtPath(root, fromPath)
+  const adjustedParent = adjustPathAfterRemoval(fromPath, toParentPath)
+  const targetParent = getAtPath(removed, adjustedParent)
+  if (!isContainer(targetParent)) return root
+
+  if (Array.isArray(targetParent)) {
+    return insertIntoContainer(removed, adjustedParent, toIndex, value)
+  }
+
+  const baseKey = typeof fromKey === 'string' ? fromKey : 'item'
+  const key = uniqueKeyName(baseKey, Object.keys(targetParent))
+  return insertIntoContainer(removed, adjustedParent, key, value)
+}

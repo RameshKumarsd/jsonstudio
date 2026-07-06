@@ -1,12 +1,14 @@
-import { Search } from 'lucide-react'
-import { EmptyState } from '@/components/common/EmptyState'
+import { MonacoProvider } from '@/app/providers/MonacoProvider'
+import { QueryView } from '@/features/query/components/QueryView'
 
+/**
+ * Run JSONPath queries against the active document. MonacoProvider scopes Monaco
+ * setup to this route.
+ */
 export function QueryPage() {
   return (
-    <EmptyState
-      icon={Search}
-      title="Query"
-      description="Run JSONPath queries against your document and inspect live results. This surface is wired and ready — the query engine ships in an upcoming phase."
-    />
+    <MonacoProvider>
+      <QueryView />
+    </MonacoProvider>
   )
 }

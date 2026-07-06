@@ -6,6 +6,7 @@ import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { parseJson } from '@/lib/json/parse'
 import {
   insertIntoContainer,
+  moveNode,
   removeAtPath,
   renameKeyAtPath,
   reorderWithinParent,
@@ -24,6 +25,7 @@ export interface TreeActions {
     value: JsonValue,
   ) => void
   reorder: (parentPath: JsonPath, fromIndex: number, toIndex: number) => void
+  move: (fromPath: JsonPath, toParentPath: JsonPath, toIndex: number) => void
 }
 
 /**
@@ -65,6 +67,8 @@ export function useTreeActions(): TreeActions {
         commit((root) =>
           reorderWithinParent(root, parentPath, fromIndex, toIndex),
         ),
+      move: (fromPath, toParentPath, toIndex) =>
+        commit((root) => moveNode(root, fromPath, toParentPath, toIndex)),
     }),
     [commit],
   )

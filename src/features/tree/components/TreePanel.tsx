@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { toast } from 'sonner'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { AlertTriangle } from 'lucide-react'
 import { useEditorController } from '@/features/editor/EditorControllerContext'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
@@ -12,6 +12,7 @@ import {
   collectContainerIds,
   type TreeNode,
 } from '@/features/tree/lib/buildTree'
+import { flattenTree } from '@/features/tree/lib/flatten'
 import { computeSearchState } from '@/features/tree/lib/search'
 import { useTreeActions } from '@/features/tree/hooks/useTreeActions'
 import {
@@ -20,7 +21,9 @@ import {
   type TreeViewValue,
 } from '@/features/tree/TreeViewContext'
 import { TreeToolbar } from '@/features/tree/components/TreeToolbar'
-import { JsonTreeView } from '@/features/tree/components/JsonTreeView'
+import { TreeRow } from '@/features/tree/components/TreeRow'
+
+const ROW_HEIGHT = 28
 
 function topLevelContainerIds(root: TreeNode): Set<string> {
   return new Set(
@@ -28,9 +31,13 @@ function topLevelContainerIds(root: TreeNode): Set<string> {
   )
 }
 
+const samePath = (a: JsonPath, b: JsonPath) =>
+  a.length === b.length && a.every((seg, i) => seg === b[i])
+
 /**
  * Editable JSON tree kept in perfect sync with Monaco. Owns expand/collapse and
- * search state; all edits flow through useTreeActions back into the document.
+ * search state; renders a virtualized, flattened row list so very large
+ * documents stay responsive. Edits flow through useTreeActions.
  */
 export function TreePanel() {
   const controller = useEditorController()
@@ -45,6 +52,7 @@ export function TreePanel() {
     return topLevelContainerIds(buildTree(parsed.value))
   })
   const dragSource = useRef<DragInfo | null>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   const tree = useMemo(
     () => (result.ok ? buildTree(result.value) : null),
@@ -61,8 +69,9 @@ export function TreePanel() {
     (path: JsonPath) => {
       const { documents, activeId } = useWorkspaceStore.getState()
       const range = findRangeForPath(documents[activeId].content, path)
-      if (range)
+      if (range) {
         controller.revealRange(range.offset, range.offset + range.length)
+      }
     },
     [controller],
   )
@@ -89,18 +98,34 @@ export function TreePanel() {
       dropOn: (target) => {
         const source = dragSource.current
         dragSource.current = null
-        if (!source) return
-        if (source.parentId !== target.parentId) {
-          toast.error('Drag items within the same list or object')
-          return
-        }
-        if (source.index !== target.index) {
-          actions.reorder(target.parentPath, source.index, target.index)
+        if (!source || samePath(source.path, target.path)) return
+        if (samePath(source.parentPath, target.parentPath)) {
+          if (source.index !== target.index) {
+            actions.reorder(target.parentPath, source.index, target.index)
+          }
+        } else {
+          actions.move(source.path, target.parentPath, target.index)
         }
       },
     }),
     [actions, searchTerm, searchState, expanded, reveal],
   )
+
+  const rows = useMemo(() => {
+    if (!tree || !tree.isContainer) return []
+    return flattenTree(tree, {
+      isVisible: contextValue.isVisible,
+      isExpanded: contextValue.isExpanded,
+    })
+  }, [tree, contextValue])
+
+  // eslint-disable-next-line react-hooks/incompatible-library -- useVirtualizer is designed to be called during render
+  const virtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 16,
+  })
 
   const expandAll = () => {
     if (tree) setExpanded(new Set(collectContainerIds(tree)))
@@ -115,23 +140,48 @@ export function TreePanel() {
         onExpandAll={expandAll}
         onCollapseAll={collapseAll}
       />
-      <div className="min-h-0 flex-1 overflow-auto px-1">
-        {!result.ok ? (
-          <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center text-xs text-muted-foreground">
-            <AlertTriangle className="size-5 text-warning" />
-            <p>Fix JSON syntax to view the tree.</p>
-            <p className="text-destructive">{result.error.message}</p>
+
+      {!result.ok ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center text-xs text-muted-foreground">
+          <AlertTriangle className="size-5 text-warning" />
+          <p>Fix JSON syntax to view the tree.</p>
+          <p className="text-destructive">{result.error.message}</p>
+        </div>
+      ) : tree && tree.isContainer ? (
+        <TreeViewProvider value={contextValue}>
+          <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto px-1">
+            <div
+              style={{
+                height: virtualizer.getTotalSize(),
+                position: 'relative',
+              }}
+            >
+              {virtualizer.getVirtualItems().map((item) => {
+                const row = rows[item.index]
+                return (
+                  <div
+                    key={row.node.id}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: item.size,
+                      transform: `translateY(${item.start}px)`,
+                    }}
+                  >
+                    <TreeRow row={row} />
+                  </div>
+                )
+              })}
+            </div>
           </div>
-        ) : tree && tree.isContainer ? (
-          <TreeViewProvider value={contextValue}>
-            <JsonTreeView root={tree} />
-          </TreeViewProvider>
-        ) : (
-          <div className="flex h-full items-center justify-center p-6 text-center text-xs text-muted-foreground">
-            Document root is a primitive value.
-          </div>
-        )}
-      </div>
+        </TreeViewProvider>
+      ) : (
+        <div className="flex flex-1 items-center justify-center p-6 text-center text-xs text-muted-foreground">
+          Document root is a primitive value.
+        </div>
+      )}
     </div>
   )
 }

@@ -4,6 +4,8 @@ import type { TreeNode } from '@/features/tree/lib/buildTree'
 import type { JsonPath } from '@/lib/json/mutate'
 
 export interface DragInfo {
+  /** Full path of the row's node. */
+  path: JsonPath
   parentId: string
   parentPath: JsonPath
   index: number
