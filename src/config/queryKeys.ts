@@ -4,4 +4,5 @@
  */
 export const queryKeys = {
   remoteImport: (url: string) => ['remote-import', url] as const,
+  httpRequest: () => ['http-request'] as const,
 } as const

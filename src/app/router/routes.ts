@@ -1,10 +1,12 @@
 import type { LucideIcon } from 'lucide-react'
-import { FileJson, GitCompare, Search } from 'lucide-react'
+import { FileJson, FileText, GitCompare, Search, Send } from 'lucide-react'
 
 export const ROUTES = {
   editor: '/editor',
   diff: '/diff',
   query: '/query',
+  request: '/request',
+  markdown: '/markdown',
 } as const
 
 export interface NavItem {
@@ -36,5 +38,17 @@ export const PRIMARY_NAV: NavItem[] = [
     to: ROUTES.query,
     icon: Search,
     description: 'Run JSONPath queries',
+  },
+  {
+    label: 'Request',
+    to: ROUTES.request,
+    icon: Send,
+    description: 'Send HTTP requests and inspect responses',
+  },
+  {
+    label: 'Markdown',
+    to: ROUTES.markdown,
+    icon: FileText,
+    description: 'Edit Markdown with a live preview',
   },
 ]
