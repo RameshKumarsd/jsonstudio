@@ -14,6 +14,12 @@ const DiffPage = lazy(() =>
 const QueryPage = lazy(() =>
   import('@/pages/QueryPage').then((m) => ({ default: m.QueryPage })),
 )
+const RequestPage = lazy(() =>
+  import('@/pages/RequestPage').then((m) => ({ default: m.RequestPage })),
+)
+const MarkdownPage = lazy(() =>
+  import('@/pages/MarkdownPage').then((m) => ({ default: m.MarkdownPage })),
+)
 const NotFoundPage = lazy(() =>
   import('@/pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })),
 )
@@ -28,6 +34,8 @@ export const router = createBrowserRouter([
       { path: 'editor/:documentId', element: <EditorPage /> },
       { path: 'diff', element: <DiffPage /> },
       { path: 'query', element: <QueryPage /> },
+      { path: 'request', element: <RequestPage /> },
+      { path: 'markdown', element: <MarkdownPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },
