@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, Loader2, Save, Send, Terminal } from 'lucide-react'
+import { ChevronDown, FileInput, Loader2, Save, Send, Terminal } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,6 +15,7 @@ import { toCurl } from '@/features/request/lib/curl'
 import { useRequestStore } from '@/stores/requestStore'
 import { useSendRequest } from '@/features/request/hooks/useSendRequest'
 import { SaveRequestDialog } from '@/features/request/components/SaveRequestDialog'
+import { ImportCurlDialog } from '@/features/request/components/ImportCurlDialog'
 import type { HttpMethod } from '@/features/request/types'
 
 const METHODS: HttpMethod[] = [
@@ -43,6 +44,7 @@ export function RequestBar() {
   const updateDraft = useRequestStore((s) => s.updateDraft)
   const sendRequest = useSendRequest()
   const [saveOpen, setSaveOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
 
   const send = () => {
     if (draft.url.trim()) sendRequest.mutate(draft)
@@ -95,6 +97,10 @@ export function RequestBar() {
         <Save /> Save
       </Button>
 
+      <ToolbarButton label="Import from cURL" onClick={() => setImportOpen(true)}>
+        <FileInput />
+      </ToolbarButton>
+
       <ToolbarButton
         label="Copy as cURL"
         onClick={() => {
@@ -106,6 +112,7 @@ export function RequestBar() {
       </ToolbarButton>
 
       <SaveRequestDialog open={saveOpen} onOpenChange={setSaveOpen} />
+      <ImportCurlDialog open={importOpen} onOpenChange={setImportOpen} />
     </div>
   )
 }
