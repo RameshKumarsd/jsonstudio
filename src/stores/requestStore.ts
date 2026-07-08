@@ -28,6 +28,8 @@ interface RequestState {
   createCollection: (name: string) => string
   renameCollection: (id: string, name: string) => void
   deleteCollection: (id: string) => void
+  /** Create a new collection pre-populated with already-built requests (e.g. a Postman import). */
+  importRequests: (name: string, requests: HttpRequest[]) => void
 
   addHistory: (request: HttpRequest, status: number | null) => void
   loadFromHistory: (id: string) => void
@@ -139,6 +141,21 @@ export const useRequestStore = create<RequestState>()(
             collectionOrder: state.collectionOrder.filter((c) => c !== id),
           }
         }),
+
+      importRequests: (name, requests) => {
+        const id = createId()
+        set((state) => ({
+          requests: {
+            ...state.requests,
+            ...Object.fromEntries(requests.map((r) => [r.id, r])),
+          },
+          collections: {
+            ...state.collections,
+            [id]: { id, name, requestIds: requests.map((r) => r.id) },
+          },
+          collectionOrder: [...state.collectionOrder, id],
+        }))
+      },
 
       addHistory: (request, status) =>
         set((state) => {
