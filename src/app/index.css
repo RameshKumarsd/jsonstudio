@@ -143,3 +143,26 @@
     text-rendering: optimizeLegibility;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Print isolation — "PDF (via Print)" in the Markdown toolbar prints   */
+/* only #markdown-print-area, hiding the rest of the app chrome.        */
+/* ------------------------------------------------------------------ */
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #markdown-print-area,
+  #markdown-print-area * {
+    visibility: visible;
+  }
+
+  #markdown-print-area {
+    position: absolute;
+    inset: 0;
+    height: auto;
+    overflow: visible;
+  }
+}

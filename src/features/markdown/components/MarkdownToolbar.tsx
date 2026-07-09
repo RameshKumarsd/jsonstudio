@@ -1,8 +1,22 @@
 import { toast } from 'sonner'
-import { Copy, Download, Upload } from 'lucide-react'
+import {
+  Copy,
+  Download,
+  FileCode,
+  FileText,
+  Printer,
+  Upload,
+} from 'lucide-react'
 import { ToolbarButton } from '@/components/common/ToolbarButton'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { copyToClipboard } from '@/lib/browser/clipboard'
 import { downloadText, pickTextFile } from '@/lib/browser/file'
+import { renderMarkdownToHtmlDocument } from '@/features/markdown/lib/exportHtml'
 
 interface MarkdownToolbarProps {
   content: string
@@ -24,12 +38,45 @@ export function MarkdownToolbar({ content, onLoad }: MarkdownToolbarProps) {
       >
         <Upload />
       </ToolbarButton>
-      <ToolbarButton
-        label="Download"
-        onClick={() => downloadText(content, 'document.md', 'text/markdown')}
-      >
-        <Download />
-      </ToolbarButton>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <ToolbarButton label="Download">
+            <Download />
+          </ToolbarButton>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          <DropdownMenuItem
+            onSelect={() =>
+              downloadText(content, 'document.md', 'text/markdown')
+            }
+          >
+            <FileText /> Markdown (.md)
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() =>
+              downloadText(
+                renderMarkdownToHtmlDocument(content, 'document'),
+                'document.html',
+                'text/html',
+              )
+            }
+          >
+            <FileCode /> HTML (.html)
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => {
+              // Browser print dialog — the user picks "Save as PDF" as the
+              // destination. A print stylesheet isolates the preview pane
+              // (#markdown-print-area) so only the rendered document prints.
+              window.print()
+            }}
+          >
+            <Printer /> PDF (via Print)
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
       <ToolbarButton
         label="Copy"
         onClick={() => {
