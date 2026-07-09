@@ -1,5 +1,12 @@
 import { useState, type ClipboardEvent } from 'react'
-import { ChevronDown, FileInput, Loader2, Save, Send, Terminal } from 'lucide-react'
+import {
+  ChevronDown,
+  FileInput,
+  Loader2,
+  Save,
+  Send,
+  Terminal,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -120,7 +127,10 @@ export function RequestBar() {
         <Save /> Save
       </Button>
 
-      <ToolbarButton label="Import from cURL" onClick={() => setImportOpen(true)}>
+      <ToolbarButton
+        label="Import from cURL"
+        onClick={() => setImportOpen(true)}
+      >
         <FileInput />
       </ToolbarButton>
 

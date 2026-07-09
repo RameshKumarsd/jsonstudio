@@ -40,7 +40,12 @@ export function MarkdownView() {
             />
           }
           right={
-            <div className="prose h-full max-w-none overflow-auto p-6 dark:prose-invert">
+            // id targeted by the print stylesheet (src/app/index.css) so the
+            // "PDF (via Print)" toolbar action prints only this pane.
+            <div
+              id="markdown-print-area"
+              className="prose h-full max-w-none overflow-auto p-6 dark:prose-invert"
+            >
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {content}
               </ReactMarkdown>

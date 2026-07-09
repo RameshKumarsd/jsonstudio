@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { parsePostmanCollection } from '@/features/request/lib/postmanCollection'
 
-function unwrap<T>(result: { ok: true; value: T } | { ok: false; error: string }) {
+function unwrap<T>(
+  result: { ok: true; value: T } | { ok: false; error: string },
+) {
   if (!result.ok) throw new Error(`expected ok, got error: ${result.error}`)
   return result.value
 }
@@ -40,18 +42,27 @@ const basicCollection = {
 
 describe('parsePostmanCollection', () => {
   it('parses a top-level collection name and requests', () => {
-    const result = unwrap(parsePostmanCollection(JSON.stringify(basicCollection)))
+    const result = unwrap(
+      parsePostmanCollection(JSON.stringify(basicCollection)),
+    )
     expect(result.name).toBe('My Collection')
     expect(result.requests).toHaveLength(2)
   })
 
   it('flattens nested folders', () => {
-    const result = unwrap(parsePostmanCollection(JSON.stringify(basicCollection)))
-    expect(result.requests.map((r) => r.name)).toEqual(['Get Todo', 'Create Todo'])
+    const result = unwrap(
+      parsePostmanCollection(JSON.stringify(basicCollection)),
+    )
+    expect(result.requests.map((r) => r.name)).toEqual([
+      'Get Todo',
+      'Create Todo',
+    ])
   })
 
   it('splits the query string out of a raw url object', () => {
-    const result = unwrap(parsePostmanCollection(JSON.stringify(basicCollection)))
+    const result = unwrap(
+      parsePostmanCollection(JSON.stringify(basicCollection)),
+    )
     const get = result.requests[0]
     expect(get.url).toBe('https://api.example.com/todos/1')
     expect(get.params).toEqual([
@@ -60,7 +71,9 @@ describe('parsePostmanCollection', () => {
   })
 
   it('parses a raw JSON body and bearer auth', () => {
-    const result = unwrap(parsePostmanCollection(JSON.stringify(basicCollection)))
+    const result = unwrap(
+      parsePostmanCollection(JSON.stringify(basicCollection)),
+    )
     const create = result.requests[1]
     expect(create.method).toBe('POST')
     expect(create.body).toBe('{"title":"test"}')
@@ -69,7 +82,9 @@ describe('parsePostmanCollection', () => {
   })
 
   it('handles a plain string url', () => {
-    const result = unwrap(parsePostmanCollection(JSON.stringify(basicCollection)))
+    const result = unwrap(
+      parsePostmanCollection(JSON.stringify(basicCollection)),
+    )
     expect(result.requests[1].url).toBe('https://api.example.com/todos')
   })
 

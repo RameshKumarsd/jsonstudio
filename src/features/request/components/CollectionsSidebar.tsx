@@ -98,7 +98,7 @@ export function CollectionsSidebar() {
   return (
     <div className="flex h-full w-60 shrink-0 flex-col border-r">
       <div className="flex items-center justify-between border-b p-2">
-        <span className="text-muted-foreground text-xs font-semibold uppercase">
+        <span className="text-xs font-semibold text-muted-foreground uppercase">
           {showHistory ? 'History' : 'Collections'}
         </span>
         <div className="flex items-center gap-1">
@@ -140,7 +140,7 @@ export function CollectionsSidebar() {
         {showHistory ? (
           <div className="space-y-1">
             {history.length === 0 && (
-              <p className="text-muted-foreground p-2 text-xs">
+              <p className="p-2 text-xs text-muted-foreground">
                 No requests sent yet.
               </p>
             )}
@@ -149,7 +149,7 @@ export function CollectionsSidebar() {
                 key={entry.id}
                 type="button"
                 onClick={() => loadFromHistory(entry.id)}
-                className="hover:bg-accent/60 flex w-full flex-col items-start rounded-md px-2 py-1 text-left text-xs"
+                className="flex w-full flex-col items-start rounded-md px-2 py-1 text-left text-xs hover:bg-accent/60"
               >
                 <span className="flex w-full items-center gap-1.5">
                   <span className="font-mono font-semibold">
@@ -190,7 +190,7 @@ export function CollectionsSidebar() {
               return (
                 <div key={id}>
                   <div className="group flex items-center gap-1 px-1">
-                    <Folder className="text-muted-foreground size-3.5 shrink-0" />
+                    <Folder className="size-3.5 shrink-0 text-muted-foreground" />
                     {renamingId === id ? (
                       <InlineEdit
                         aria-label="Rename collection"
@@ -239,7 +239,7 @@ export function CollectionsSidebar() {
 
             {unsorted.length > 0 && (
               <div>
-                <div className="text-muted-foreground px-1 text-xs font-medium">
+                <div className="px-1 text-xs font-medium text-muted-foreground">
                   Unsorted
                 </div>
                 <div className="mt-1 space-y-0.5">
@@ -257,7 +257,7 @@ export function CollectionsSidebar() {
             )}
 
             {collectionOrder.length === 0 && unsorted.length === 0 && (
-              <p className="text-muted-foreground p-2 text-xs">
+              <p className="p-2 text-xs text-muted-foreground">
                 No saved requests yet. Build a request and click Save.
               </p>
             )}
@@ -266,7 +266,7 @@ export function CollectionsSidebar() {
       </div>
 
       <div className="space-y-1 border-t p-2">
-        <label className="text-muted-foreground text-[11px]">
+        <label className="text-[11px] text-muted-foreground">
           CORS proxy (optional)
         </label>
         <Input
