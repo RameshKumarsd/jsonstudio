@@ -1,6 +1,9 @@
 import { ok, err, type Result } from '@/types/json'
 import { createId } from '@/lib/utils/id'
-import { createEmptyRequest, createKeyValueEntry } from '@/features/request/lib/defaults'
+import {
+  createEmptyRequest,
+  createKeyValueEntry,
+} from '@/features/request/lib/defaults'
 import type {
   HttpMethod,
   HttpRequest,
@@ -70,7 +73,10 @@ function toHttpMethod(value: string | undefined): HttpMethod {
   return (METHODS as string[]).includes(upper) ? (upper as HttpMethod) : 'GET'
 }
 
-function authFieldValue(fields: PostmanAuthField[] | undefined, key: string): string {
+function authFieldValue(
+  fields: PostmanAuthField[] | undefined,
+  key: string,
+): string {
   const field = fields?.find((f) => f.key === key)
   return typeof field?.value === 'string' ? field.value : ''
 }
@@ -98,11 +104,13 @@ function convertRequest(item: PostmanItem): ConvertedRequest | null {
   const source = item.request
   if (!source) return null
 
-  const rawUrl = typeof source.url === 'string' ? source.url : (source.url?.raw ?? '')
+  const rawUrl =
+    typeof source.url === 'string' ? source.url : (source.url?.raw ?? '')
   if (!rawUrl) return null
 
   const [baseUrl] = rawUrl.split('?')
-  const urlQuery = typeof source.url === 'object' ? (source.url.query ?? []) : []
+  const urlQuery =
+    typeof source.url === 'object' ? (source.url.query ?? []) : []
   const params: KeyValueEntry[] = urlQuery
     .filter((q) => q.key)
     .map((q) => ({
@@ -132,7 +140,10 @@ function convertRequest(item: PostmanItem): ConvertedRequest | null {
   } else if (mode === 'urlencoded') {
     body = (source.body?.urlencoded ?? [])
       .filter((f) => f.key && !f.disabled)
-      .map((f) => `${encodeURIComponent(f.key ?? '')}=${encodeURIComponent(f.value ?? '')}`)
+      .map(
+        (f) =>
+          `${encodeURIComponent(f.key ?? '')}=${encodeURIComponent(f.value ?? '')}`,
+      )
       .join('&')
     bodyEnabled = body.length > 0
   } else {
@@ -141,7 +152,11 @@ function convertRequest(item: PostmanItem): ConvertedRequest | null {
   }
 
   const auth = toRequestAuth(source.auth)
-  if (source.auth?.type && source.auth.type !== 'noauth' && auth.type === 'none') {
+  if (
+    source.auth?.type &&
+    source.auth.type !== 'noauth' &&
+    auth.type === 'none'
+  ) {
     skipped = true // an auth type we don't support (apikey, oauth2, digest, ...)
   }
 
@@ -159,7 +174,10 @@ function convertRequest(item: PostmanItem): ConvertedRequest | null {
   return { request, skipped }
 }
 
-function flattenItems(items: PostmanItem[] | undefined, out: PostmanItem[]): void {
+function flattenItems(
+  items: PostmanItem[] | undefined,
+  out: PostmanItem[],
+): void {
   for (const item of items ?? []) {
     if (item.request) {
       out.push(item)
@@ -187,7 +205,9 @@ export function parsePostmanCollection(
   }
 
   if (!Array.isArray(parsed.item)) {
-    return err('That does not look like a Postman collection (missing "item" array)')
+    return err(
+      'That does not look like a Postman collection (missing "item" array)',
+    )
   }
 
   const leafItems: PostmanItem[] = []

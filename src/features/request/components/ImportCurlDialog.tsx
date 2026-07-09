@@ -22,7 +22,10 @@ const PLACEHOLDER = `curl -X POST https://api.example.com/things \\
   -d '{"a":1}'`
 
 /** Paste a cURL command and load it as the active request draft. */
-export function ImportCurlDialog({ open, onOpenChange }: ImportCurlDialogProps) {
+export function ImportCurlDialog({
+  open,
+  onOpenChange,
+}: ImportCurlDialogProps) {
   const updateDraft = useRequestStore((s) => s.updateDraft)
   const [text, setText] = useState('')
 
@@ -61,7 +64,7 @@ export function ImportCurlDialog({ open, onOpenChange }: ImportCurlDialogProps) 
           placeholder={PLACEHOLDER}
           rows={8}
           spellCheck={false}
-          className="border-input bg-background focus-visible:ring-ring/50 w-full resize-none rounded-md border p-2 font-mono text-xs outline-none focus-visible:ring-2"
+          className="w-full resize-none rounded-md border border-input bg-background p-2 font-mono text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
         />
 
         <DialogFooter>

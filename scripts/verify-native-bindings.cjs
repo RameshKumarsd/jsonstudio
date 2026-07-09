@@ -47,7 +47,9 @@ function main() {
   const missing = REQUIRED.filter((spec) => !isInstalled(spec))
 
   if (missing.length === 0) {
-    console.log('[verify-native-bindings] all Linux x64 native bindings present')
+    console.log(
+      '[verify-native-bindings] all Linux x64 native bindings present',
+    )
     return
   }
 

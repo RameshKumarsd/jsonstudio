@@ -3,7 +3,9 @@ import { parseCurl } from '@/features/request/lib/parseCurl'
 import { toCurl } from '@/features/request/lib/curl'
 import { createEmptyRequest } from '@/features/request/lib/defaults'
 
-function unwrap<T>(result: { ok: true; value: T } | { ok: false; error: string }) {
+function unwrap<T>(
+  result: { ok: true; value: T } | { ok: false; error: string },
+) {
   if (!result.ok) throw new Error(`expected ok, got error: ${result.error}`)
   return result.value
 }
@@ -35,22 +37,32 @@ describe('parseCurl', () => {
   })
 
   it('extracts basic auth from -u', () => {
-    const parsed = unwrap(parseCurl(`curl -u user:pass https://api.example.com/x`))
-    expect(parsed.auth).toEqual({ type: 'basic', username: 'user', password: 'pass' })
+    const parsed = unwrap(
+      parseCurl(`curl -u user:pass https://api.example.com/x`),
+    )
+    expect(parsed.auth).toEqual({
+      type: 'basic',
+      username: 'user',
+      password: 'pass',
+    })
   })
 
   it('extracts a bearer token from an Authorization header', () => {
     const parsed = unwrap(
-      parseCurl(`curl -H 'Authorization: Bearer abc123' https://api.example.com/x`),
+      parseCurl(
+        `curl -H 'Authorization: Bearer abc123' https://api.example.com/x`,
+      ),
     )
     expect(parsed.auth).toEqual({ type: 'bearer', token: 'abc123' })
-    expect(parsed.headers.some((h) => h.key.toLowerCase() === 'authorization')).toBe(
-      false,
-    )
+    expect(
+      parsed.headers.some((h) => h.key.toLowerCase() === 'authorization'),
+    ).toBe(false)
   })
 
   it('splits query params out of the URL', () => {
-    const parsed = unwrap(parseCurl(`curl 'https://api.example.com/x?page=2&q=hi'`))
+    const parsed = unwrap(
+      parseCurl(`curl 'https://api.example.com/x?page=2&q=hi'`),
+    )
     expect(parsed.url).toBe('https://api.example.com/x')
     expect(parsed.params.map((p) => [p.key, p.value])).toEqual([
       ['page', '2'],
@@ -90,8 +102,8 @@ describe('parseCurl', () => {
     expect(parsed.url).toBe('https://api.example.com/things')
     expect(parsed.body).toBe('{"a":1}')
     expect(parsed.auth).toEqual({ type: 'bearer', token: 'xyz' })
-    expect(parsed.headers.some((h) => h.key === 'X-Test' && h.value === 'yes')).toBe(
-      true,
-    )
+    expect(
+      parsed.headers.some((h) => h.key === 'X-Test' && h.value === 'yes'),
+    ).toBe(true)
   })
 })

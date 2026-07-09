@@ -124,7 +124,8 @@ export function parseCurl(command: string): Result<ParsedCurl, string> {
 
     if (token === '-X' || token === '--request') {
       const value = tokens[++i]
-      if (value && isHttpMethod(value)) method = value.toUpperCase() as HttpMethod
+      if (value && isHttpMethod(value))
+        method = value.toUpperCase() as HttpMethod
       continue
     }
     if (token === '-H' || token === '--header') {
