@@ -106,4 +106,17 @@ describe('buildAxiosConfig', () => {
     const request = createEmptyRequest({ url: 'https://api.example.com/x' })
     expect(buildAxiosConfig(request).url).toBe('https://api.example.com/x')
   })
+
+  it('ignores a proxy prefix that is not itself a URL', () => {
+    // Regression: stray text (e.g. a curl command pasted into the wrong
+    // field) used to be concatenated onto the URL verbatim, turning an
+    // absolute URL into a relative path resolved against the app's own
+    // origin instead of erroring or being ignored.
+    const request = createEmptyRequest({ url: 'https://api.example.com/x' })
+    const { url } = buildAxiosConfig(
+      request,
+      "curl 'https://other.com/' -H 'Accept: json'",
+    )
+    expect(url).toBe('https://api.example.com/x')
+  })
 })

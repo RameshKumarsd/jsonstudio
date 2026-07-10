@@ -30,6 +30,13 @@ export async function sendRequest(
   proxyPrefix?: string,
 ): Promise<HttpResponseMeta> {
   const { url, config } = buildAxiosConfig(request, proxyPrefix)
+
+  if (!/^https?:\/\//i.test(url.trim())) {
+    throw {
+      message: `"${url}" is not a valid http(s) URL — check the request URL and the CORS proxy prefix.`,
+    } satisfies NormalizedHttpError
+  }
+
   const start = performance.now()
 
   try {

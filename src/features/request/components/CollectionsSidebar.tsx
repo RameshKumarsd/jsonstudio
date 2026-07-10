@@ -1,6 +1,14 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { Folder, FolderPlus, History, Trash2, Upload } from 'lucide-react'
+import {
+  Folder,
+  FolderPlus,
+  History,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Trash2,
+  Upload,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { InlineEdit } from '@/components/common/InlineEdit'
@@ -66,6 +74,7 @@ export function CollectionsSidebar() {
 
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [showHistory, setShowHistory] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
 
   const inAnyCollection = new Set(
     collectionOrder.flatMap((id) => collections[id]?.requestIds ?? []),
@@ -92,6 +101,31 @@ export function CollectionsSidebar() {
             description: `${result.value.skippedCount} used an unsupported auth/body type and imported partially.`,
           }
         : undefined,
+    )
+  }
+
+  if (collapsed) {
+    return (
+      <div className="flex h-full w-10 shrink-0 flex-col items-center gap-1 border-r py-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-6"
+          aria-label="Expand sidebar"
+          onClick={() => setCollapsed(false)}
+        >
+          <PanelLeftOpen className="size-3.5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-6"
+          aria-label={showHistory ? 'Show collections' : 'Show history'}
+          onClick={() => setShowHistory((v) => !v)}
+        >
+          <History className="size-3.5" />
+        </Button>
+      </div>
     )
   }
 
@@ -133,6 +167,15 @@ export function CollectionsSidebar() {
               </Button>
             </>
           )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-6"
+            aria-label="Collapse sidebar"
+            onClick={() => setCollapsed(true)}
+          >
+            <PanelLeftClose className="size-3.5" />
+          </Button>
         </div>
       </div>
 
