@@ -2,6 +2,7 @@ import { Braces } from 'lucide-react'
 import { APP_NAME } from '@/config/constants'
 import { ThemeToggle } from '@/components/common/ThemeToggle'
 import { ImportUrlDialog } from '@/features/import-url/components/ImportUrlDialog'
+import { HelpTrigger } from '@/features/help/components/HelpTrigger'
 import { Separator } from '@/components/ui/separator'
 
 /**
@@ -20,6 +21,7 @@ export function AppHeader() {
 
       <div className="ml-auto flex items-center gap-1">
         <ImportUrlDialog />
+        <HelpTrigger />
         <ThemeToggle />
       </div>
     </header>
