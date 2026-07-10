@@ -1,4 +1,5 @@
 import { useMutation } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { sendRequest } from '@/features/request/lib/sendRequest'
 import { useRequestStore } from '@/stores/requestStore'
 import { queryKeys } from '@/config/queryKeys'
@@ -22,8 +23,9 @@ export function useSendRequest() {
       setLastResponse(response)
       addHistory(request, response.status)
     },
-    onError: (_error, request) => {
+    onError: (error, request) => {
       addHistory(request, null)
+      toast.error('Request failed', { description: error.message })
     },
   })
 }

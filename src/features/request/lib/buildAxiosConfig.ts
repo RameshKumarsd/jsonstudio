@@ -20,9 +20,19 @@ function enabledEntries(entries: KeyValueEntry[]): [string, string][] {
     .map((entry) => [entry.key, entry.value])
 }
 
+function isAbsoluteUrl(value: string): boolean {
+  return /^https?:\/\//i.test(value.trim())
+}
+
+/**
+ * A proxy prefix that isn't itself a URL (e.g. stray text accidentally
+ * pasted into the field) is ignored rather than concatenated — silently
+ * corrupting the request into a relative path on the app's own origin is
+ * far more confusing than just not proxying.
+ */
 function resolveUrl(url: string, proxyPrefix?: string): string {
   const prefix = proxyPrefix?.trim()
-  if (!prefix) return url
+  if (!prefix || !isAbsoluteUrl(prefix)) return url
   if (prefix.includes('{url}'))
     return prefix.replace('{url}', encodeURIComponent(url))
   return `${prefix}${url}`
