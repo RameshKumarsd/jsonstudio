@@ -42,6 +42,32 @@ describe('buildAxiosConfig', () => {
     )
   })
 
+  it('adds an API Key auth header when the location is header', () => {
+    const request = createEmptyRequest({
+      auth: {
+        type: 'apikey',
+        apiKeyName: 'X-Api-Key',
+        apiKeyValue: 'secret',
+        apiKeyLocation: 'header',
+      },
+    })
+    const { config } = buildAxiosConfig(request)
+    expect(headerValue(config.headers, 'X-Api-Key')).toBe('secret')
+  })
+
+  it('adds an API Key auth query param when the location is query', () => {
+    const request = createEmptyRequest({
+      auth: {
+        type: 'apikey',
+        apiKeyName: 'api_key',
+        apiKeyValue: 'secret',
+        apiKeyLocation: 'query',
+      },
+    })
+    const { config } = buildAxiosConfig(request)
+    expect(config.params).toMatchObject({ api_key: 'secret' })
+  })
+
   it('attaches the body only when enabled and the method allows it', () => {
     const withBody = createEmptyRequest({
       method: 'POST',

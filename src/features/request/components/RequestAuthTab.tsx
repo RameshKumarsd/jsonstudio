@@ -10,6 +10,7 @@ const OPTIONS: { value: RequestAuth['type']; label: string }[] = [
   { value: 'none', label: 'No auth' },
   { value: 'bearer', label: 'Bearer token' },
   { value: 'basic', label: 'Basic auth' },
+  { value: 'apikey', label: 'API Key' },
 ]
 
 /** Auth-type picker plus the fields it needs; writes into draft.auth. */
@@ -59,6 +60,47 @@ export function RequestAuthTab({ auth, onChange }: RequestAuthTabProps) {
               onChange({ ...auth, password: event.target.value })
             }
           />
+        </div>
+      )}
+
+      {auth.type === 'apikey' && (
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <Input
+              value={auth.apiKeyName ?? ''}
+              placeholder="Key"
+              onChange={(event) =>
+                onChange({ ...auth, apiKeyName: event.target.value })
+              }
+              className="font-mono text-xs"
+            />
+            <Input
+              value={auth.apiKeyValue ?? ''}
+              placeholder="Value"
+              onChange={(event) =>
+                onChange({ ...auth, apiKeyValue: event.target.value })
+              }
+              className="font-mono text-xs"
+            />
+          </div>
+          <div className="flex gap-4 text-sm">
+            {(['header', 'query'] as const).map((location) => (
+              <label
+                key={location}
+                className="flex cursor-pointer items-center gap-2"
+              >
+                <input
+                  type="radio"
+                  name="apikey-location"
+                  checked={(auth.apiKeyLocation ?? 'header') === location}
+                  onChange={() =>
+                    onChange({ ...auth, apiKeyLocation: location })
+                  }
+                />
+                {location === 'header' ? 'Header' : 'Query param'}
+              </label>
+            ))}
+          </div>
         </div>
       )}
     </div>

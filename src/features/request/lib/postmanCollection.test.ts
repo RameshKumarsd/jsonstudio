@@ -81,6 +81,37 @@ describe('parsePostmanCollection', () => {
     expect(create.auth).toEqual({ type: 'bearer', token: 'xyz' })
   })
 
+  it('parses API Key auth (header location)', () => {
+    const collection = {
+      info: { name: 'Api Key Collection' },
+      item: [
+        {
+          name: 'Get Secret',
+          request: {
+            method: 'GET',
+            url: 'https://api.example.com/secret',
+            auth: {
+              type: 'apikey',
+              apikey: [
+                { key: 'key', value: 'X-Api-Key' },
+                { key: 'value', value: 'topsecret' },
+                { key: 'in', value: 'header' },
+              ],
+            },
+          },
+        },
+      ],
+    }
+    const result = unwrap(parsePostmanCollection(JSON.stringify(collection)))
+    expect(result.requests[0].auth).toEqual({
+      type: 'apikey',
+      apiKeyName: 'X-Api-Key',
+      apiKeyValue: 'topsecret',
+      apiKeyLocation: 'header',
+    })
+    expect(result.skippedCount).toBe(0)
+  })
+
   it('handles a plain string url', () => {
     const result = unwrap(
       parsePostmanCollection(JSON.stringify(basicCollection)),

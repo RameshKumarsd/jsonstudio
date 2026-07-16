@@ -51,6 +51,9 @@ export function buildAxiosConfig(
   const headers: Record<string, string> = Object.fromEntries(
     enabledEntries(request.headers),
   )
+  const params: Record<string, string> = Object.fromEntries(
+    enabledEntries(request.params),
+  )
 
   if (request.auth.type === 'bearer' && request.auth.token) {
     headers.Authorization = `Bearer ${request.auth.token}`
@@ -60,6 +63,15 @@ export function buildAxiosConfig(
   ) {
     const credentials = `${request.auth.username ?? ''}:${request.auth.password ?? ''}`
     headers.Authorization = `Basic ${btoa(credentials)}`
+  } else if (
+    request.auth.type === 'apikey' &&
+    request.auth.apiKeyName?.trim()
+  ) {
+    if (request.auth.apiKeyLocation === 'query') {
+      params[request.auth.apiKeyName] = request.auth.apiKeyValue ?? ''
+    } else {
+      headers[request.auth.apiKeyName] = request.auth.apiKeyValue ?? ''
+    }
   }
 
   const hasBody =
@@ -76,7 +88,7 @@ export function buildAxiosConfig(
 
   const config: AxiosRequestConfig = {
     method: request.method,
-    params: Object.fromEntries(enabledEntries(request.params)),
+    params,
     headers,
     data: hasBody ? request.body : undefined,
     timeout: REQUEST_TIMEOUT_MS,

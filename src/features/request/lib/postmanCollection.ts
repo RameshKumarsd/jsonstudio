@@ -33,6 +33,7 @@ interface PostmanAuth {
   type?: string
   bearer?: PostmanAuthField[]
   basic?: PostmanAuthField[]
+  apikey?: PostmanAuthField[]
 }
 interface PostmanRequest {
   method?: string
@@ -90,6 +91,15 @@ function toRequestAuth(auth: PostmanAuth | undefined): RequestAuth {
       type: 'basic',
       username: authFieldValue(auth.basic, 'username'),
       password: authFieldValue(auth.basic, 'password'),
+    }
+  }
+  if (auth?.type === 'apikey') {
+    const location = authFieldValue(auth.apikey, 'in')
+    return {
+      type: 'apikey',
+      apiKeyName: authFieldValue(auth.apikey, 'key'),
+      apiKeyValue: authFieldValue(auth.apikey, 'value'),
+      apiKeyLocation: location === 'query' ? 'query' : 'header',
     }
   }
   return { type: 'none' }
@@ -157,7 +167,7 @@ function convertRequest(item: PostmanItem): ConvertedRequest | null {
     source.auth.type !== 'noauth' &&
     auth.type === 'none'
   ) {
-    skipped = true // an auth type we don't support (apikey, oauth2, digest, ...)
+    skipped = true // an auth type we don't support (oauth2, digest, ...)
   }
 
   const request = createEmptyRequest({
