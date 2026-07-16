@@ -200,9 +200,10 @@ function flattenItems(
 /**
  * Parse a Postman Collection (v2.x) JSON export into HttpRequest objects.
  * Nested folders are flattened. Only `raw` and `urlencoded` body modes and
- * bearer/basic auth translate fully; anything else (form-data, file bodies,
- * OAuth, API keys, ...) imports with an empty body/no auth and counts toward
- * `skippedCount` so the caller can warn without failing the whole import.
+ * bearer/basic/apikey auth translate fully; anything else (form-data, file
+ * bodies, OAuth, digest, ...) imports with an empty body/no auth and counts
+ * toward `skippedCount` so the caller can warn without failing the whole
+ * import.
  */
 export function parsePostmanCollection(
   text: string,
@@ -241,4 +242,78 @@ export function parsePostmanCollection(
     requests,
     skippedCount,
   })
+}
+
+function toPostmanAuth(auth: RequestAuth): PostmanAuth | undefined {
+  if (auth.type === 'bearer') {
+    return { type: 'bearer', bearer: [{ key: 'token', value: auth.token ?? '' }] }
+  }
+  if (auth.type === 'basic') {
+    return {
+      type: 'basic',
+      basic: [
+        { key: 'username', value: auth.username ?? '' },
+        { key: 'password', value: auth.password ?? '' },
+      ],
+    }
+  }
+  if (auth.type === 'apikey') {
+    return {
+      type: 'apikey',
+      apikey: [
+        { key: 'key', value: auth.apiKeyName ?? '' },
+        { key: 'value', value: auth.apiKeyValue ?? '' },
+        { key: 'in', value: auth.apiKeyLocation ?? 'header' },
+      ],
+    }
+  }
+  return undefined
+}
+
+function toPostmanUrl(request: HttpRequest): PostmanUrl {
+  const query = request.params
+    .filter((p) => p.key.trim())
+    .map((p) => ({ key: p.key, value: p.value, disabled: !p.enabled || undefined }))
+  const enabledQuery = query.filter((q) => !q.disabled)
+  const raw = enabledQuery.length
+    ? `${request.url}${request.url.includes('?') ? '&' : '?'}${enabledQuery
+        .map((q) => `${q.key}=${q.value}`)
+        .join('&')}`
+    : request.url
+  return { raw, query }
+}
+
+/**
+ * Export saved requests as a Postman Collection v2.1 JSON document — the
+ * mirror image of `parsePostmanCollection`. Auth round-trips for
+ * bearer/basic/apikey; `none` omits the `auth` field entirely, matching
+ * Postman's own export shape.
+ */
+export function exportPostmanCollection(
+  name: string,
+  requests: HttpRequest[],
+) {
+  return {
+    info: {
+      name,
+      schema:
+        'https://schema.getpostman.com/json/collection/v2.1.0/collection.json',
+    },
+    item: requests.map((request) => ({
+      name: request.name,
+      request: {
+        method: request.method,
+        header: request.headers
+          .filter((h) => h.enabled && h.key.trim())
+          .map((h) => ({ key: h.key, value: h.value })),
+        url: toPostmanUrl(request),
+        ...(request.bodyEnabled && request.body.trim()
+          ? { body: { mode: 'raw', raw: request.body } }
+          : {}),
+        ...(toPostmanAuth(request.auth)
+          ? { auth: toPostmanAuth(request.auth) }
+          : {}),
+      },
+    })),
+  }
 }

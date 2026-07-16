@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import {
+  Download,
   Folder,
   FolderPlus,
   History,
@@ -14,8 +15,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { InlineEdit } from '@/components/common/InlineEdit'
 import { useRequestStore } from '@/stores/requestStore'
-import { pickTextFile } from '@/lib/browser/file'
-import { parsePostmanCollection } from '@/features/request/lib/postmanCollection'
+import { downloadText, pickTextFile } from '@/lib/browser/file'
+import {
+  exportPostmanCollection,
+  parsePostmanCollection,
+} from '@/features/request/lib/postmanCollection'
 import { EnvironmentDialog } from '@/features/request/components/EnvironmentDialog'
 import { cn } from '@/lib/utils'
 
@@ -108,6 +112,20 @@ export function CollectionsSidebar() {
             description: `${result.value.skippedCount} used an unsupported auth/body type and imported partially.`,
           }
         : undefined,
+    )
+  }
+
+  const exportCollection = (collectionId: string) => {
+    const collection = collections[collectionId]
+    if (!collection) return
+    const collectionRequests = collection.requestIds
+      .map((id) => requests[id])
+      .filter((r): r is NonNullable<typeof r> => r !== undefined)
+    const file = exportPostmanCollection(collection.name, collectionRequests)
+    downloadText(
+      JSON.stringify(file, null, 2),
+      `${collection.name}.postman_collection.json`,
+      'application/json',
     )
   }
 
@@ -272,6 +290,14 @@ export function CollectionsSidebar() {
                         {collection.name}
                       </span>
                     )}
+                    <button
+                      type="button"
+                      aria-label={`Export ${collection.name} as Postman collection`}
+                      onClick={() => exportCollection(id)}
+                      className="text-muted-foreground opacity-0 group-hover:opacity-100"
+                    >
+                      <Download className="size-3" />
+                    </button>
                     <button
                       type="button"
                       aria-label={`Delete ${collection.name}`}
