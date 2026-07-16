@@ -13,7 +13,10 @@ import {
   unflatten,
   type TransformError,
 } from '@/features/tools/lib/transformers'
+import { repairJson } from '@/features/tools/lib/repair'
 import { StatisticsPanel } from '@/features/tools/components/StatisticsPanel'
+import { ExportPanel } from '@/features/tools/components/ExportPanel'
+import { JwtDecoderPanel } from '@/features/tools/components/JwtDecoderPanel'
 import type { Result } from '@/types/json'
 
 type Tool = {
@@ -25,6 +28,7 @@ const TOOLS: Tool[] = [
   { label: 'Format', fn: format },
   { label: 'Minify', fn: minify },
   { label: 'Beautify', fn: beautify },
+  { label: 'Repair', fn: repairJson },
   { label: 'Sort Keys', fn: sortKeys },
   { label: 'Remove Empty Values', fn: removeEmptyValues },
   { label: 'Remove Duplicate Keys', fn: removeDuplicateKeys },
@@ -57,6 +61,20 @@ export function ToolsPanel() {
             </Button>
           ))}
         </div>
+      </section>
+
+      <section className="space-y-2">
+        <h3 className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+          Export
+        </h3>
+        <ExportPanel />
+      </section>
+
+      <section className="space-y-2">
+        <h3 className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+          JWT Decoder
+        </h3>
+        <JwtDecoderPanel />
       </section>
 
       <section className="space-y-2">
