@@ -13,6 +13,7 @@ import {
   unflatten,
   type TransformError,
 } from '@/features/tools/lib/transformers'
+import { repairJson } from '@/features/tools/lib/repair'
 import { StatisticsPanel } from '@/features/tools/components/StatisticsPanel'
 import type { Result } from '@/types/json'
 
@@ -25,6 +26,7 @@ const TOOLS: Tool[] = [
   { label: 'Format', fn: format },
   { label: 'Minify', fn: minify },
   { label: 'Beautify', fn: beautify },
+  { label: 'Repair', fn: repairJson },
   { label: 'Sort Keys', fn: sortKeys },
   { label: 'Remove Empty Values', fn: removeEmptyValues },
   { label: 'Remove Duplicate Keys', fn: removeDuplicateKeys },
