@@ -15,6 +15,8 @@ interface PostmanKeyValue {
   key?: string
   value?: string
   disabled?: boolean
+  /** form-data fields only: 'text' (default) or 'file' (not supported). */
+  type?: string
 }
 interface PostmanUrl {
   raw?: string
@@ -24,6 +26,7 @@ interface PostmanBody {
   mode?: string
   raw?: string
   urlencoded?: PostmanKeyValue[]
+  formdata?: PostmanKeyValue[]
 }
 interface PostmanAuthField {
   key?: string
@@ -141,23 +144,35 @@ function convertRequest(item: PostmanItem): ConvertedRequest | null {
 
   let body = ''
   let bodyEnabled = false
+  let bodyMode: HttpRequest['bodyMode'] = 'raw'
+  let bodyFields: KeyValueEntry[] = []
   let skipped = false
   const mode = source.body?.mode
 
   if (!mode || mode === 'raw') {
     body = source.body?.raw ?? ''
     bodyEnabled = body.trim().length > 0
-  } else if (mode === 'urlencoded') {
-    body = (source.body?.urlencoded ?? [])
-      .filter((f) => f.key && !f.disabled)
-      .map(
-        (f) =>
-          `${encodeURIComponent(f.key ?? '')}=${encodeURIComponent(f.value ?? '')}`,
-      )
-      .join('&')
-    bodyEnabled = body.length > 0
+  } else if (mode === 'urlencoded' || mode === 'formdata') {
+    const sourceFields =
+      mode === 'urlencoded'
+        ? (source.body?.urlencoded ?? [])
+        : (source.body?.formdata ?? [])
+    const fileFields = sourceFields.filter((f) => f.type === 'file')
+    bodyFields = sourceFields
+      .filter((f) => f.key && f.type !== 'file')
+      .map((f) => ({
+        id: createId(),
+        key: f.key ?? '',
+        value: f.value ?? '',
+        enabled: !f.disabled,
+      }))
+    bodyMode = mode === 'urlencoded' ? 'urlencoded' : 'form-data'
+    bodyEnabled = bodyFields.some((f) => f.enabled && f.key.trim())
+    // File fields aren't supported (no file-picking UI) — the request still
+    // imports with its text fields, but counts as a partial import.
+    if (fileFields.length > 0) skipped = true
   } else {
-    // formdata / file / graphql / etc. — not supported by this client.
+    // graphql / file / etc. — not supported by this client.
     skipped = true
   }
 
@@ -179,6 +194,8 @@ function convertRequest(item: PostmanItem): ConvertedRequest | null {
     auth,
     body,
     bodyEnabled,
+    bodyMode,
+    bodyFields: bodyFields.length ? bodyFields : [createKeyValueEntry()],
   })
 
   return { request, skipped }
@@ -283,6 +300,24 @@ function toPostmanUrl(request: HttpRequest): PostmanUrl {
   return { raw, query }
 }
 
+function toPostmanBody(request: HttpRequest): PostmanBody | undefined {
+  if (!request.bodyEnabled) return undefined
+
+  const mode = request.bodyMode ?? 'raw'
+  if (mode === 'raw') {
+    return request.body.trim() ? { mode: 'raw', raw: request.body } : undefined
+  }
+
+  const fields = (request.bodyFields ?? [])
+    .filter((f) => f.enabled && f.key.trim())
+    .map((f) => ({ key: f.key, value: f.value }))
+  if (fields.length === 0) return undefined
+
+  return mode === 'urlencoded'
+    ? { mode: 'urlencoded', urlencoded: fields }
+    : { mode: 'formdata', formdata: fields }
+}
+
 /**
  * Export saved requests as a Postman Collection v2.1 JSON document — the
  * mirror image of `parsePostmanCollection`. Auth round-trips for
@@ -299,21 +334,21 @@ export function exportPostmanCollection(
       schema:
         'https://schema.getpostman.com/json/collection/v2.1.0/collection.json',
     },
-    item: requests.map((request) => ({
-      name: request.name,
-      request: {
-        method: request.method,
-        header: request.headers
-          .filter((h) => h.enabled && h.key.trim())
-          .map((h) => ({ key: h.key, value: h.value })),
-        url: toPostmanUrl(request),
-        ...(request.bodyEnabled && request.body.trim()
-          ? { body: { mode: 'raw', raw: request.body } }
-          : {}),
-        ...(toPostmanAuth(request.auth)
-          ? { auth: toPostmanAuth(request.auth) }
-          : {}),
-      },
-    })),
+    item: requests.map((request) => {
+      const body = toPostmanBody(request)
+      const auth = toPostmanAuth(request.auth)
+      return {
+        name: request.name,
+        request: {
+          method: request.method,
+          header: request.headers
+            .filter((h) => h.enabled && h.key.trim())
+            .map((h) => ({ key: h.key, value: h.value })),
+          url: toPostmanUrl(request),
+          ...(body ? { body } : {}),
+          ...(auth ? { auth } : {}),
+        },
+      }
+    }),
   }
 }

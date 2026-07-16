@@ -75,9 +75,15 @@ export function RequestClient() {
                   <RequestBodyTab
                     body={draft.body}
                     enabled={draft.bodyEnabled}
+                    mode={draft.bodyMode}
+                    fields={draft.bodyFields}
                     onBodyChange={(body) => updateDraft({ body })}
                     onEnabledChange={(bodyEnabled) =>
                       updateDraft({ bodyEnabled })
+                    }
+                    onModeChange={(bodyMode) => updateDraft({ bodyMode })}
+                    onFieldsChange={(bodyFields) =>
+                      updateDraft({ bodyFields })
                     }
                   />
                 </TabsContent>

@@ -85,6 +85,66 @@ describe('parsePostmanCollection', () => {
     expect(create.auth).toEqual({ type: 'bearer', token: 'xyz' })
   })
 
+  it('parses a urlencoded body into bodyFields with bodyMode urlencoded', () => {
+    const collection = {
+      info: { name: 'Form Collection' },
+      item: [
+        {
+          name: 'Submit form',
+          request: {
+            method: 'POST',
+            url: 'https://api.example.com/submit',
+            body: {
+              mode: 'urlencoded',
+              urlencoded: [
+                { key: 'name', value: 'Ada' },
+                { key: 'off', value: 'skip', disabled: true },
+              ],
+            },
+          },
+        },
+      ],
+    }
+    const result = unwrap(parsePostmanCollection(JSON.stringify(collection)))
+    const request = result.requests[0]
+    expect(request.bodyMode).toBe('urlencoded')
+    expect(request.bodyEnabled).toBe(true)
+    expect(request.bodyFields).toEqual([
+      expect.objectContaining({ key: 'name', value: 'Ada', enabled: true }),
+      expect.objectContaining({ key: 'off', value: 'skip', enabled: false }),
+    ])
+    expect(result.skippedCount).toBe(0)
+  })
+
+  it('parses form-data text fields, but flags a request with a file field as skipped', () => {
+    const collection = {
+      info: { name: 'Upload Collection' },
+      item: [
+        {
+          name: 'Upload',
+          request: {
+            method: 'POST',
+            url: 'https://api.example.com/upload',
+            body: {
+              mode: 'formdata',
+              formdata: [
+                { key: 'title', type: 'text', value: 'My File' },
+                { key: 'avatar', type: 'file', value: '' },
+              ],
+            },
+          },
+        },
+      ],
+    }
+    const result = unwrap(parsePostmanCollection(JSON.stringify(collection)))
+    const request = result.requests[0]
+    expect(request.bodyMode).toBe('form-data')
+    expect(request.bodyFields).toEqual([
+      expect.objectContaining({ key: 'title', value: 'My File' }),
+    ])
+    expect(result.skippedCount).toBe(1)
+  })
+
   it('parses API Key auth (header location)', () => {
     const collection = {
       info: { name: 'Api Key Collection' },
@@ -132,7 +192,10 @@ describe('parsePostmanCollection', () => {
           request: {
             method: 'POST',
             url: 'https://api.example.com/upload',
-            body: { mode: 'formdata' },
+            body: {
+              mode: 'formdata',
+              formdata: [{ key: 'avatar', type: 'file', value: '' }],
+            },
           },
         },
         {
@@ -243,5 +306,41 @@ describe('exportPostmanCollection', () => {
       apiKeyValue: 'secret',
       apiKeyLocation: 'query',
     })
+  })
+
+  it('round-trips urlencoded and form-data bodies back through the importer', () => {
+    const requests = [
+      createEmptyRequest({
+        name: 'Form',
+        url: 'https://api.example.com/form',
+        method: 'POST',
+        bodyEnabled: true,
+        bodyMode: 'urlencoded',
+        bodyFields: [{ id: '1', key: 'name', value: 'Ada', enabled: true }],
+      }),
+      createEmptyRequest({
+        name: 'Upload',
+        url: 'https://api.example.com/upload',
+        method: 'POST',
+        bodyEnabled: true,
+        bodyMode: 'form-data',
+        bodyFields: [
+          { id: '1', key: 'title', value: 'My File', enabled: true },
+        ],
+      }),
+    ]
+    const exported = exportPostmanCollection('Body Round Trip', requests)
+    const reimported = unwrap(
+      parsePostmanCollection(JSON.stringify(exported)),
+    )
+    expect(reimported.skippedCount).toBe(0)
+    expect(reimported.requests[0].bodyMode).toBe('urlencoded')
+    expect(reimported.requests[0].bodyFields).toEqual([
+      expect.objectContaining({ key: 'name', value: 'Ada' }),
+    ])
+    expect(reimported.requests[1].bodyMode).toBe('form-data')
+    expect(reimported.requests[1].bodyFields).toEqual([
+      expect.objectContaining({ key: 'title', value: 'My File' }),
+    ])
   })
 })
