@@ -6,6 +6,7 @@ import {
   History,
   PanelLeftClose,
   PanelLeftOpen,
+  Settings2,
   Trash2,
   Upload,
 } from 'lucide-react'
@@ -15,6 +16,7 @@ import { InlineEdit } from '@/components/common/InlineEdit'
 import { useRequestStore } from '@/stores/requestStore'
 import { pickTextFile } from '@/lib/browser/file'
 import { parsePostmanCollection } from '@/features/request/lib/postmanCollection'
+import { EnvironmentDialog } from '@/features/request/components/EnvironmentDialog'
 import { cn } from '@/lib/utils'
 
 interface RequestRowProps {
@@ -61,6 +63,10 @@ export function CollectionsSidebar() {
   const history = useRequestStore((s) => s.history)
   const draft = useRequestStore((s) => s.draft)
   const proxyPrefix = useRequestStore((s) => s.proxyPrefix)
+  const environments = useRequestStore((s) => s.environments)
+  const environmentOrder = useRequestStore((s) => s.environmentOrder)
+  const activeEnvironmentId = useRequestStore((s) => s.activeEnvironmentId)
+  const setActiveEnvironment = useRequestStore((s) => s.setActiveEnvironment)
 
   const createCollection = useRequestStore((s) => s.createCollection)
   const renameCollection = useRequestStore((s) => s.renameCollection)
@@ -75,6 +81,7 @@ export function CollectionsSidebar() {
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [showHistory, setShowHistory] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
+  const [environmentDialogOpen, setEnvironmentDialogOpen] = useState(false)
 
   const inAnyCollection = new Set(
     collectionOrder.flatMap((id) => collections[id]?.requestIds ?? []),
@@ -125,6 +132,19 @@ export function CollectionsSidebar() {
         >
           <History className="size-3.5" />
         </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-6"
+          aria-label="Manage environments"
+          onClick={() => setEnvironmentDialogOpen(true)}
+        >
+          <Settings2 className="size-3.5" />
+        </Button>
+        <EnvironmentDialog
+          open={environmentDialogOpen}
+          onOpenChange={setEnvironmentDialogOpen}
+        />
       </div>
     )
   }
@@ -310,6 +330,37 @@ export function CollectionsSidebar() {
 
       <div className="space-y-1 border-t p-2">
         <label className="text-[11px] text-muted-foreground">
+          Environment
+        </label>
+        <div className="flex items-center gap-1">
+          <select
+            value={activeEnvironmentId ?? ''}
+            onChange={(event) =>
+              setActiveEnvironment(event.target.value || null)
+            }
+            className="h-7 w-full rounded-md border border-input bg-transparent px-2 text-[11px]"
+          >
+            <option value="">No environment</option>
+            {environmentOrder.map((id) => (
+              <option key={id} value={id}>
+                {environments[id]?.name}
+              </option>
+            ))}
+          </select>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7 shrink-0"
+            aria-label="Manage environments"
+            onClick={() => setEnvironmentDialogOpen(true)}
+          >
+            <Settings2 className="size-3.5" />
+          </Button>
+        </div>
+      </div>
+
+      <div className="space-y-1 border-t p-2">
+        <label className="text-[11px] text-muted-foreground">
           CORS proxy (optional)
         </label>
         <Input
@@ -319,6 +370,11 @@ export function CollectionsSidebar() {
           className="h-7 font-mono text-[11px]"
         />
       </div>
+
+      <EnvironmentDialog
+        open={environmentDialogOpen}
+        onOpenChange={setEnvironmentDialogOpen}
+      />
     </div>
   )
 }
