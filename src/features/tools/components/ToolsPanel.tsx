@@ -15,6 +15,7 @@ import {
 } from '@/features/tools/lib/transformers'
 import { repairJson } from '@/features/tools/lib/repair'
 import { StatisticsPanel } from '@/features/tools/components/StatisticsPanel'
+import { ExportPanel } from '@/features/tools/components/ExportPanel'
 import type { Result } from '@/types/json'
 
 type Tool = {
@@ -59,6 +60,13 @@ export function ToolsPanel() {
             </Button>
           ))}
         </div>
+      </section>
+
+      <section className="space-y-2">
+        <h3 className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+          Export
+        </h3>
+        <ExportPanel />
       </section>
 
       <section className="space-y-2">
