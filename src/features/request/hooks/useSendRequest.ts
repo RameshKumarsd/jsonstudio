@@ -15,10 +15,15 @@ export function useSendRequest() {
   const setLastResponse = useRequestStore((s) => s.setLastResponse)
   const addHistory = useRequestStore((s) => s.addHistory)
   const proxyPrefix = useRequestStore((s) => s.proxyPrefix)
+  const activeEnvironmentId = useRequestStore((s) => s.activeEnvironmentId)
+  const environments = useRequestStore((s) => s.environments)
+  const variables = activeEnvironmentId
+    ? (environments[activeEnvironmentId]?.variables ?? [])
+    : []
 
   return useMutation<HttpResponseMeta, NormalizedHttpError, HttpRequest>({
     mutationKey: queryKeys.httpRequest(),
-    mutationFn: (request) => sendRequest(request, proxyPrefix),
+    mutationFn: (request) => sendRequest(request, proxyPrefix, variables),
     onSuccess: (response, request) => {
       setLastResponse(response)
       addHistory(request, response.status)

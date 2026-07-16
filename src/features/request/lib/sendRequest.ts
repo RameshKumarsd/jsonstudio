@@ -4,7 +4,12 @@ import {
   type NormalizedHttpError,
 } from '@/lib/http/axiosClient'
 import { buildAxiosConfig } from '@/features/request/lib/buildAxiosConfig'
-import type { HttpRequest, HttpResponseMeta } from '@/features/request/types'
+import { applyEnvironment } from '@/features/request/lib/environment'
+import type {
+  HttpRequest,
+  HttpResponseMeta,
+  KeyValueEntry,
+} from '@/features/request/types'
 
 function byteLength(text: string): number {
   if (typeof TextEncoder !== 'undefined')
@@ -28,8 +33,12 @@ const CORS_HINT =
 export async function sendRequest(
   request: HttpRequest,
   proxyPrefix?: string,
+  environmentVariables?: KeyValueEntry[],
 ): Promise<HttpResponseMeta> {
-  const { url, config } = buildAxiosConfig(request, proxyPrefix)
+  const resolved = environmentVariables?.length
+    ? applyEnvironment(request, environmentVariables)
+    : request
+  const { url, config } = buildAxiosConfig(resolved, proxyPrefix)
 
   if (!/^https?:\/\//i.test(url.trim())) {
     throw {
