@@ -22,6 +22,8 @@ export interface RequestAuth {
   apiKeyLocation?: ApiKeyLocation
 }
 
+export type BodyMode = 'raw' | 'urlencoded' | 'form-data'
+
 export interface HttpRequest {
   id: string
   name: string
@@ -32,6 +34,9 @@ export interface HttpRequest {
   auth: RequestAuth
   body: string
   bodyEnabled: boolean
+  /** Which of `body` (raw) or `bodyFields` (urlencoded/form-data) is read at send time. */
+  bodyMode: BodyMode
+  bodyFields: KeyValueEntry[]
 }
 
 export interface HttpResponseMeta {

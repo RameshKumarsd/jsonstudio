@@ -68,6 +68,47 @@ describe('buildAxiosConfig', () => {
     expect(config.params).toMatchObject({ api_key: 'secret' })
   })
 
+  it('serializes urlencoded body fields and sets the matching Content-Type', () => {
+    const request = createEmptyRequest({
+      method: 'POST',
+      bodyEnabled: true,
+      bodyMode: 'urlencoded',
+      bodyFields: [
+        entry('name', 'Ada Lovelace'),
+        entry('lang', 'en'),
+        entry('off', 'skip', false),
+      ],
+    })
+    const { config } = buildAxiosConfig(request)
+    expect(config.data).toBe('name=Ada%20Lovelace&lang=en')
+    expect(headerValue(config.headers, 'Content-Type')).toBe(
+      'application/x-www-form-urlencoded',
+    )
+  })
+
+  it('builds a FormData body for form-data mode without setting Content-Type', () => {
+    const request = createEmptyRequest({
+      method: 'POST',
+      bodyEnabled: true,
+      bodyMode: 'form-data',
+      bodyFields: [entry('avatar', 'ada.png')],
+    })
+    const { config } = buildAxiosConfig(request)
+    expect(config.data).toBeInstanceOf(FormData)
+    expect((config.data as FormData).get('avatar')).toBe('ada.png')
+    expect(headerValue(config.headers, 'Content-Type')).toBeUndefined()
+  })
+
+  it('sends no body when the current mode has no enabled fields', () => {
+    const request = createEmptyRequest({
+      method: 'POST',
+      bodyEnabled: true,
+      bodyMode: 'urlencoded',
+      bodyFields: [entry('off', 'skip', false)],
+    })
+    expect(buildAxiosConfig(request).config.data).toBeUndefined()
+  })
+
   it('attaches the body only when enabled and the method allows it', () => {
     const withBody = createEmptyRequest({
       method: 'POST',
