@@ -6,9 +6,11 @@ import { idbJSONStorage } from '@/stores/persist/idbStorage'
 import { createEmptyRequest } from '@/features/request/lib/defaults'
 import type {
   Collection,
+  Environment,
   HistoryEntry,
   HttpRequest,
   HttpResponseMeta,
+  KeyValueEntry,
 } from '@/features/request/types'
 
 interface RequestState {
@@ -19,6 +21,9 @@ interface RequestState {
   history: HistoryEntry[]
   proxyPrefix: string
   lastResponse: HttpResponseMeta | null
+  environments: Record<string, Environment>
+  environmentOrder: string[]
+  activeEnvironmentId: string | null
 
   updateDraft: (patch: Partial<HttpRequest>) => void
   loadRequest: (id: string) => void
@@ -37,6 +42,12 @@ interface RequestState {
 
   setProxyPrefix: (value: string) => void
   setLastResponse: (response: HttpResponseMeta | null) => void
+
+  createEnvironment: (name: string) => string
+  renameEnvironment: (id: string, name: string) => void
+  deleteEnvironment: (id: string) => void
+  setEnvironmentVariables: (id: string, variables: KeyValueEntry[]) => void
+  setActiveEnvironment: (id: string | null) => void
 }
 
 /**
@@ -55,6 +66,9 @@ export const useRequestStore = create<RequestState>()(
       history: [],
       proxyPrefix: '',
       lastResponse: null,
+      environments: {},
+      environmentOrder: [],
+      activeEnvironmentId: null,
 
       updateDraft: (patch) =>
         set((state) => ({ draft: { ...state.draft, ...patch } })),
@@ -177,6 +191,58 @@ export const useRequestStore = create<RequestState>()(
 
       setProxyPrefix: (value) => set({ proxyPrefix: value }),
       setLastResponse: (response) => set({ lastResponse: response }),
+
+      createEnvironment: (name) => {
+        const id = createId()
+        set((state) => ({
+          environments: {
+            ...state.environments,
+            [id]: { id, name, variables: [] },
+          },
+          environmentOrder: [...state.environmentOrder, id],
+        }))
+        return id
+      },
+
+      renameEnvironment: (id, name) =>
+        set((state) => {
+          const environment = state.environments[id]
+          if (!environment) return state
+          return {
+            environments: {
+              ...state.environments,
+              [id]: { ...environment, name },
+            },
+          }
+        }),
+
+      deleteEnvironment: (id) =>
+        set((state) => {
+          const nextEnvironments = { ...state.environments }
+          delete nextEnvironments[id]
+          return {
+            environments: nextEnvironments,
+            environmentOrder: state.environmentOrder.filter((e) => e !== id),
+            activeEnvironmentId:
+              state.activeEnvironmentId === id
+                ? null
+                : state.activeEnvironmentId,
+          }
+        }),
+
+      setEnvironmentVariables: (id, variables) =>
+        set((state) => {
+          const environment = state.environments[id]
+          if (!environment) return state
+          return {
+            environments: {
+              ...state.environments,
+              [id]: { ...environment, variables },
+            },
+          }
+        }),
+
+      setActiveEnvironment: (id) => set({ activeEnvironmentId: id }),
     }),
     {
       name: STORAGE_KEYS.request,

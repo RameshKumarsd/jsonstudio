@@ -8,13 +8,18 @@ export interface KeyValueEntry {
   enabled: boolean
 }
 
-export type AuthType = 'none' | 'bearer' | 'basic'
+export type AuthType = 'none' | 'bearer' | 'basic' | 'apikey'
+
+export type ApiKeyLocation = 'header' | 'query'
 
 export interface RequestAuth {
   type: AuthType
   token?: string
   username?: string
   password?: string
+  apiKeyName?: string
+  apiKeyValue?: string
+  apiKeyLocation?: ApiKeyLocation
 }
 
 export interface HttpRequest {
@@ -50,4 +55,10 @@ export interface HistoryEntry {
   request: HttpRequest
   status: number | null
   timestamp: number
+}
+
+export interface Environment {
+  id: string
+  name: string
+  variables: KeyValueEntry[]
 }
