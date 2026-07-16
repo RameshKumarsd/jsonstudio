@@ -20,7 +20,7 @@ import { ToolbarButton } from '@/components/common/ToolbarButton'
 import { copyToClipboard } from '@/lib/browser/clipboard'
 import { toCurl } from '@/features/request/lib/curl'
 import { parseCurl } from '@/features/request/lib/parseCurl'
-import { useRequestStore } from '@/stores/requestStore'
+import { selectActiveDraft, useRequestStore } from '@/stores/requestStore'
 import { useSendRequest } from '@/features/request/hooks/useSendRequest'
 import { SaveRequestDialog } from '@/features/request/components/SaveRequestDialog'
 import { ImportCurlDialog } from '@/features/request/components/ImportCurlDialog'
@@ -48,7 +48,7 @@ const METHOD_COLOR: Record<HttpMethod, string> = {
 
 /** Method picker, URL input, and the primary request actions. */
 export function RequestBar() {
-  const draft = useRequestStore((s) => s.draft)
+  const draft = useRequestStore(selectActiveDraft)
   const updateDraft = useRequestStore((s) => s.updateDraft)
   const sendRequest = useSendRequest()
   const [saveOpen, setSaveOpen] = useState(false)

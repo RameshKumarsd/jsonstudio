@@ -28,7 +28,7 @@ function statusColor(status: number): string {
 
 /** Displays the most recent response: status, timing, size, body, and headers. */
 export function ResponseViewer() {
-  const response = useRequestStore((s) => s.lastResponse)
+  const response = useRequestStore((s) => s.responses[s.activeDraftId])
   const createDocument = useWorkspaceStore((s) => s.createDocument)
 
   if (!response) {

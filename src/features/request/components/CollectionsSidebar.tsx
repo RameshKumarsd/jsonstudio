@@ -14,7 +14,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { InlineEdit } from '@/components/common/InlineEdit'
-import { useRequestStore } from '@/stores/requestStore'
+import { selectActiveDraft, useRequestStore } from '@/stores/requestStore'
 import { downloadText, pickTextFile } from '@/lib/browser/file'
 import {
   exportPostmanCollection,
@@ -65,7 +65,7 @@ export function CollectionsSidebar() {
   const collections = useRequestStore((s) => s.collections)
   const collectionOrder = useRequestStore((s) => s.collectionOrder)
   const history = useRequestStore((s) => s.history)
-  const draft = useRequestStore((s) => s.draft)
+  const draft = useRequestStore(selectActiveDraft)
   const proxyPrefix = useRequestStore((s) => s.proxyPrefix)
   const environments = useRequestStore((s) => s.environments)
   const environmentOrder = useRequestStore((s) => s.environmentOrder)

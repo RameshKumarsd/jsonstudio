@@ -1,23 +1,26 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { SplitPane } from '@/components/layout/SplitPane'
 import { CollectionsSidebar } from '@/features/request/components/CollectionsSidebar'
+import { RequestTabs } from '@/features/request/components/RequestTabs'
 import { RequestBar } from '@/features/request/components/RequestBar'
 import { KeyValueEditor } from '@/features/request/components/KeyValueEditor'
 import { RequestAuthTab } from '@/features/request/components/RequestAuthTab'
 import { RequestBodyTab } from '@/features/request/components/RequestBodyTab'
 import { ResponseViewer } from '@/features/request/components/ResponseViewer'
-import { useRequestStore } from '@/stores/requestStore'
+import { selectActiveDraft, useRequestStore } from '@/stores/requestStore'
 
 function countLabel(count: number): string {
   return count > 0 ? ` (${count})` : ''
 }
 
 /**
- * Postman-style HTTP request client: collections rail, request bar, a tabbed
- * request editor (Params/Headers/Auth/Body), and the response viewer.
+ * Postman-style HTTP request client: collections rail, a request-tab strip
+ * (multiple requests open at once, mirroring the Editor's document tabs),
+ * request bar, a tabbed request editor (Params/Headers/Auth/Body), and the
+ * response viewer.
  */
 export function RequestClient() {
-  const draft = useRequestStore((s) => s.draft)
+  const draft = useRequestStore(selectActiveDraft)
   const updateDraft = useRequestStore((s) => s.updateDraft)
 
   const enabledParams = draft.params.filter(
@@ -31,6 +34,7 @@ export function RequestClient() {
     <div className="flex h-full">
       <CollectionsSidebar />
       <div className="flex min-w-0 flex-1 flex-col">
+        <RequestTabs />
         <RequestBar />
         <div className="min-h-0 flex-1">
           <SplitPane
