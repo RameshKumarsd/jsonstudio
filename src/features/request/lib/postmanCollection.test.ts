@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { parsePostmanCollection } from '@/features/request/lib/postmanCollection'
+import {
+  exportPostmanCollection,
+  parsePostmanCollection,
+} from '@/features/request/lib/postmanCollection'
+import { createEmptyRequest } from '@/features/request/lib/defaults'
 
 function unwrap<T>(
   result: { ok: true; value: T } | { ok: false; error: string },
@@ -81,6 +85,97 @@ describe('parsePostmanCollection', () => {
     expect(create.auth).toEqual({ type: 'bearer', token: 'xyz' })
   })
 
+  it('parses a urlencoded body into bodyFields with bodyMode urlencoded', () => {
+    const collection = {
+      info: { name: 'Form Collection' },
+      item: [
+        {
+          name: 'Submit form',
+          request: {
+            method: 'POST',
+            url: 'https://api.example.com/submit',
+            body: {
+              mode: 'urlencoded',
+              urlencoded: [
+                { key: 'name', value: 'Ada' },
+                { key: 'off', value: 'skip', disabled: true },
+              ],
+            },
+          },
+        },
+      ],
+    }
+    const result = unwrap(parsePostmanCollection(JSON.stringify(collection)))
+    const request = result.requests[0]
+    expect(request.bodyMode).toBe('urlencoded')
+    expect(request.bodyEnabled).toBe(true)
+    expect(request.bodyFields).toEqual([
+      expect.objectContaining({ key: 'name', value: 'Ada', enabled: true }),
+      expect.objectContaining({ key: 'off', value: 'skip', enabled: false }),
+    ])
+    expect(result.skippedCount).toBe(0)
+  })
+
+  it('parses form-data text fields, but flags a request with a file field as skipped', () => {
+    const collection = {
+      info: { name: 'Upload Collection' },
+      item: [
+        {
+          name: 'Upload',
+          request: {
+            method: 'POST',
+            url: 'https://api.example.com/upload',
+            body: {
+              mode: 'formdata',
+              formdata: [
+                { key: 'title', type: 'text', value: 'My File' },
+                { key: 'avatar', type: 'file', value: '' },
+              ],
+            },
+          },
+        },
+      ],
+    }
+    const result = unwrap(parsePostmanCollection(JSON.stringify(collection)))
+    const request = result.requests[0]
+    expect(request.bodyMode).toBe('form-data')
+    expect(request.bodyFields).toEqual([
+      expect.objectContaining({ key: 'title', value: 'My File' }),
+    ])
+    expect(result.skippedCount).toBe(1)
+  })
+
+  it('parses API Key auth (header location)', () => {
+    const collection = {
+      info: { name: 'Api Key Collection' },
+      item: [
+        {
+          name: 'Get Secret',
+          request: {
+            method: 'GET',
+            url: 'https://api.example.com/secret',
+            auth: {
+              type: 'apikey',
+              apikey: [
+                { key: 'key', value: 'X-Api-Key' },
+                { key: 'value', value: 'topsecret' },
+                { key: 'in', value: 'header' },
+              ],
+            },
+          },
+        },
+      ],
+    }
+    const result = unwrap(parsePostmanCollection(JSON.stringify(collection)))
+    expect(result.requests[0].auth).toEqual({
+      type: 'apikey',
+      apiKeyName: 'X-Api-Key',
+      apiKeyValue: 'topsecret',
+      apiKeyLocation: 'header',
+    })
+    expect(result.skippedCount).toBe(0)
+  })
+
   it('handles a plain string url', () => {
     const result = unwrap(
       parsePostmanCollection(JSON.stringify(basicCollection)),
@@ -97,7 +192,10 @@ describe('parsePostmanCollection', () => {
           request: {
             method: 'POST',
             url: 'https://api.example.com/upload',
-            body: { mode: 'formdata' },
+            body: {
+              mode: 'formdata',
+              formdata: [{ key: 'avatar', type: 'file', value: '' }],
+            },
           },
         },
         {
@@ -125,5 +223,124 @@ describe('parsePostmanCollection', () => {
 
   it('errors when there are no importable requests', () => {
     expect(parsePostmanCollection(JSON.stringify({ item: [] })).ok).toBe(false)
+  })
+})
+
+describe('exportPostmanCollection', () => {
+  it('produces a collection with the given name and one item per request', () => {
+    const requests = [
+      createEmptyRequest({ name: 'Get Todo', url: 'https://api.example.com/todos/1' }),
+      createEmptyRequest({ name: 'Create Todo', method: 'POST' }),
+    ]
+    const collection = exportPostmanCollection('My Collection', requests)
+    expect(collection.info.name).toBe('My Collection')
+    expect(collection.item).toHaveLength(2)
+    expect(collection.item[0].name).toBe('Get Todo')
+    expect(collection.item[0].request.method).toBe('GET')
+    expect(collection.item[1].request.method).toBe('POST')
+  })
+
+  it('includes enabled headers and the body when enabled', () => {
+    const request = createEmptyRequest({
+      name: 'Create',
+      method: 'POST',
+      headers: [
+        { id: '1', key: 'X-Test', value: 'yes', enabled: true },
+        { id: '2', key: 'X-Off', value: 'no', enabled: false },
+      ],
+      body: '{"a":1}',
+      bodyEnabled: true,
+    })
+    const collection = exportPostmanCollection('C', [request])
+    const item = collection.item[0]
+    expect(item.request.header).toEqual([{ key: 'X-Test', value: 'yes' }])
+    expect(item.request.body).toEqual({ mode: 'raw', raw: '{"a":1}' })
+  })
+
+  it('omits the auth field for requests with no auth', () => {
+    const request = createEmptyRequest({ auth: { type: 'none' } })
+    const collection = exportPostmanCollection('C', [request])
+    expect(collection.item[0].request.auth).toBeUndefined()
+  })
+
+  it('round-trips bearer, basic, and apikey auth back through the importer', () => {
+    const requests = [
+      createEmptyRequest({
+        name: 'Bearer',
+        url: 'https://api.example.com/a',
+        auth: { type: 'bearer', token: 'xyz' },
+      }),
+      createEmptyRequest({
+        name: 'Basic',
+        url: 'https://api.example.com/b',
+        auth: { type: 'basic', username: 'user', password: 'pass' },
+      }),
+      createEmptyRequest({
+        name: 'ApiKey',
+        url: 'https://api.example.com/c',
+        auth: {
+          type: 'apikey',
+          apiKeyName: 'X-Api-Key',
+          apiKeyValue: 'secret',
+          apiKeyLocation: 'query',
+        },
+      }),
+    ]
+    const exported = exportPostmanCollection('Round Trip', requests)
+    const reimported = unwrap(
+      parsePostmanCollection(JSON.stringify(exported)),
+    )
+    expect(reimported.skippedCount).toBe(0)
+    expect(reimported.requests[0].auth).toEqual({
+      type: 'bearer',
+      token: 'xyz',
+    })
+    expect(reimported.requests[1].auth).toEqual({
+      type: 'basic',
+      username: 'user',
+      password: 'pass',
+    })
+    expect(reimported.requests[2].auth).toEqual({
+      type: 'apikey',
+      apiKeyName: 'X-Api-Key',
+      apiKeyValue: 'secret',
+      apiKeyLocation: 'query',
+    })
+  })
+
+  it('round-trips urlencoded and form-data bodies back through the importer', () => {
+    const requests = [
+      createEmptyRequest({
+        name: 'Form',
+        url: 'https://api.example.com/form',
+        method: 'POST',
+        bodyEnabled: true,
+        bodyMode: 'urlencoded',
+        bodyFields: [{ id: '1', key: 'name', value: 'Ada', enabled: true }],
+      }),
+      createEmptyRequest({
+        name: 'Upload',
+        url: 'https://api.example.com/upload',
+        method: 'POST',
+        bodyEnabled: true,
+        bodyMode: 'form-data',
+        bodyFields: [
+          { id: '1', key: 'title', value: 'My File', enabled: true },
+        ],
+      }),
+    ]
+    const exported = exportPostmanCollection('Body Round Trip', requests)
+    const reimported = unwrap(
+      parsePostmanCollection(JSON.stringify(exported)),
+    )
+    expect(reimported.skippedCount).toBe(0)
+    expect(reimported.requests[0].bodyMode).toBe('urlencoded')
+    expect(reimported.requests[0].bodyFields).toEqual([
+      expect.objectContaining({ key: 'name', value: 'Ada' }),
+    ])
+    expect(reimported.requests[1].bodyMode).toBe('form-data')
+    expect(reimported.requests[1].bodyFields).toEqual([
+      expect.objectContaining({ key: 'title', value: 'My File' }),
+    ])
   })
 })

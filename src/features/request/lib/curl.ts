@@ -24,6 +24,14 @@ export function toCurl(request: HttpRequest): string {
   ) {
     const credentials = `${request.auth.username ?? ''}:${request.auth.password ?? ''}`
     parts.push(`-u ${shellEscape(credentials)}`)
+  } else if (
+    request.auth.type === 'apikey' &&
+    request.auth.apiKeyName?.trim() &&
+    request.auth.apiKeyLocation !== 'query'
+  ) {
+    parts.push(
+      `-H ${shellEscape(`${request.auth.apiKeyName}: ${request.auth.apiKeyValue ?? ''}`)}`,
+    )
   }
 
   if (request.bodyEnabled && request.body.trim()) {
@@ -31,6 +39,18 @@ export function toCurl(request: HttpRequest): string {
   }
 
   const query = request.params.filter((p) => p.enabled && p.key.trim())
+  if (
+    request.auth.type === 'apikey' &&
+    request.auth.apiKeyLocation === 'query' &&
+    request.auth.apiKeyName?.trim()
+  ) {
+    query.push({
+      id: 'apikey',
+      key: request.auth.apiKeyName,
+      value: request.auth.apiKeyValue ?? '',
+      enabled: true,
+    })
+  }
   const url = query.length
     ? `${request.url}${request.url.includes('?') ? '&' : '?'}${query
         .map(

@@ -1,20 +1,26 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import {
+  Download,
   Folder,
   FolderPlus,
   History,
   PanelLeftClose,
   PanelLeftOpen,
+  Settings2,
   Trash2,
   Upload,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { InlineEdit } from '@/components/common/InlineEdit'
-import { useRequestStore } from '@/stores/requestStore'
-import { pickTextFile } from '@/lib/browser/file'
-import { parsePostmanCollection } from '@/features/request/lib/postmanCollection'
+import { selectActiveDraft, useRequestStore } from '@/stores/requestStore'
+import { downloadText, pickTextFile } from '@/lib/browser/file'
+import {
+  exportPostmanCollection,
+  parsePostmanCollection,
+} from '@/features/request/lib/postmanCollection'
+import { EnvironmentDialog } from '@/features/request/components/EnvironmentDialog'
 import { cn } from '@/lib/utils'
 
 interface RequestRowProps {
@@ -59,8 +65,12 @@ export function CollectionsSidebar() {
   const collections = useRequestStore((s) => s.collections)
   const collectionOrder = useRequestStore((s) => s.collectionOrder)
   const history = useRequestStore((s) => s.history)
-  const draft = useRequestStore((s) => s.draft)
+  const draft = useRequestStore(selectActiveDraft)
   const proxyPrefix = useRequestStore((s) => s.proxyPrefix)
+  const environments = useRequestStore((s) => s.environments)
+  const environmentOrder = useRequestStore((s) => s.environmentOrder)
+  const activeEnvironmentId = useRequestStore((s) => s.activeEnvironmentId)
+  const setActiveEnvironment = useRequestStore((s) => s.setActiveEnvironment)
 
   const createCollection = useRequestStore((s) => s.createCollection)
   const renameCollection = useRequestStore((s) => s.renameCollection)
@@ -75,6 +85,7 @@ export function CollectionsSidebar() {
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [showHistory, setShowHistory] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
+  const [environmentDialogOpen, setEnvironmentDialogOpen] = useState(false)
 
   const inAnyCollection = new Set(
     collectionOrder.flatMap((id) => collections[id]?.requestIds ?? []),
@@ -104,6 +115,20 @@ export function CollectionsSidebar() {
     )
   }
 
+  const exportCollection = (collectionId: string) => {
+    const collection = collections[collectionId]
+    if (!collection) return
+    const collectionRequests = collection.requestIds
+      .map((id) => requests[id])
+      .filter((r): r is NonNullable<typeof r> => r !== undefined)
+    const file = exportPostmanCollection(collection.name, collectionRequests)
+    downloadText(
+      JSON.stringify(file, null, 2),
+      `${collection.name}.postman_collection.json`,
+      'application/json',
+    )
+  }
+
   if (collapsed) {
     return (
       <div className="flex h-full w-10 shrink-0 flex-col items-center gap-1 border-r py-2">
@@ -125,6 +150,19 @@ export function CollectionsSidebar() {
         >
           <History className="size-3.5" />
         </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-6"
+          aria-label="Manage environments"
+          onClick={() => setEnvironmentDialogOpen(true)}
+        >
+          <Settings2 className="size-3.5" />
+        </Button>
+        <EnvironmentDialog
+          open={environmentDialogOpen}
+          onOpenChange={setEnvironmentDialogOpen}
+        />
       </div>
     )
   }
@@ -254,6 +292,14 @@ export function CollectionsSidebar() {
                     )}
                     <button
                       type="button"
+                      aria-label={`Export ${collection.name} as Postman collection`}
+                      onClick={() => exportCollection(id)}
+                      className="text-muted-foreground opacity-0 group-hover:opacity-100"
+                    >
+                      <Download className="size-3" />
+                    </button>
+                    <button
+                      type="button"
                       aria-label={`Delete ${collection.name}`}
                       onClick={() => deleteCollection(id)}
                       className="text-muted-foreground opacity-0 group-hover:opacity-100"
@@ -310,6 +356,37 @@ export function CollectionsSidebar() {
 
       <div className="space-y-1 border-t p-2">
         <label className="text-[11px] text-muted-foreground">
+          Environment
+        </label>
+        <div className="flex items-center gap-1">
+          <select
+            value={activeEnvironmentId ?? ''}
+            onChange={(event) =>
+              setActiveEnvironment(event.target.value || null)
+            }
+            className="h-7 w-full rounded-md border border-input bg-transparent px-2 text-[11px]"
+          >
+            <option value="">No environment</option>
+            {environmentOrder.map((id) => (
+              <option key={id} value={id}>
+                {environments[id]?.name}
+              </option>
+            ))}
+          </select>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7 shrink-0"
+            aria-label="Manage environments"
+            onClick={() => setEnvironmentDialogOpen(true)}
+          >
+            <Settings2 className="size-3.5" />
+          </Button>
+        </div>
+      </div>
+
+      <div className="space-y-1 border-t p-2">
+        <label className="text-[11px] text-muted-foreground">
           CORS proxy (optional)
         </label>
         <Input
@@ -319,6 +396,11 @@ export function CollectionsSidebar() {
           className="h-7 font-mono text-[11px]"
         />
       </div>
+
+      <EnvironmentDialog
+        open={environmentDialogOpen}
+        onOpenChange={setEnvironmentDialogOpen}
+      />
     </div>
   )
 }

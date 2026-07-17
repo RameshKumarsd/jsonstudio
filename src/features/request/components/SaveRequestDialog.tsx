@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { useRequestStore } from '@/stores/requestStore'
+import { selectActiveDraft, useRequestStore } from '@/stores/requestStore'
 
 interface SaveRequestDialogProps {
   open: boolean
@@ -22,7 +22,7 @@ export function SaveRequestDialog({
   open,
   onOpenChange,
 }: SaveRequestDialogProps) {
-  const draft = useRequestStore((s) => s.draft)
+  const draft = useRequestStore(selectActiveDraft)
   const collections = useRequestStore((s) => s.collections)
   const collectionOrder = useRequestStore((s) => s.collectionOrder)
   const createCollection = useRequestStore((s) => s.createCollection)

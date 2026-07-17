@@ -15,6 +15,8 @@ interface PostmanKeyValue {
   key?: string
   value?: string
   disabled?: boolean
+  /** form-data fields only: 'text' (default) or 'file' (not supported). */
+  type?: string
 }
 interface PostmanUrl {
   raw?: string
@@ -24,6 +26,7 @@ interface PostmanBody {
   mode?: string
   raw?: string
   urlencoded?: PostmanKeyValue[]
+  formdata?: PostmanKeyValue[]
 }
 interface PostmanAuthField {
   key?: string
@@ -33,6 +36,7 @@ interface PostmanAuth {
   type?: string
   bearer?: PostmanAuthField[]
   basic?: PostmanAuthField[]
+  apikey?: PostmanAuthField[]
 }
 interface PostmanRequest {
   method?: string
@@ -92,6 +96,15 @@ function toRequestAuth(auth: PostmanAuth | undefined): RequestAuth {
       password: authFieldValue(auth.basic, 'password'),
     }
   }
+  if (auth?.type === 'apikey') {
+    const location = authFieldValue(auth.apikey, 'in')
+    return {
+      type: 'apikey',
+      apiKeyName: authFieldValue(auth.apikey, 'key'),
+      apiKeyValue: authFieldValue(auth.apikey, 'value'),
+      apiKeyLocation: location === 'query' ? 'query' : 'header',
+    }
+  }
   return { type: 'none' }
 }
 
@@ -131,23 +144,35 @@ function convertRequest(item: PostmanItem): ConvertedRequest | null {
 
   let body = ''
   let bodyEnabled = false
+  let bodyMode: HttpRequest['bodyMode'] = 'raw'
+  let bodyFields: KeyValueEntry[] = []
   let skipped = false
   const mode = source.body?.mode
 
   if (!mode || mode === 'raw') {
     body = source.body?.raw ?? ''
     bodyEnabled = body.trim().length > 0
-  } else if (mode === 'urlencoded') {
-    body = (source.body?.urlencoded ?? [])
-      .filter((f) => f.key && !f.disabled)
-      .map(
-        (f) =>
-          `${encodeURIComponent(f.key ?? '')}=${encodeURIComponent(f.value ?? '')}`,
-      )
-      .join('&')
-    bodyEnabled = body.length > 0
+  } else if (mode === 'urlencoded' || mode === 'formdata') {
+    const sourceFields =
+      mode === 'urlencoded'
+        ? (source.body?.urlencoded ?? [])
+        : (source.body?.formdata ?? [])
+    const fileFields = sourceFields.filter((f) => f.type === 'file')
+    bodyFields = sourceFields
+      .filter((f) => f.key && f.type !== 'file')
+      .map((f) => ({
+        id: createId(),
+        key: f.key ?? '',
+        value: f.value ?? '',
+        enabled: !f.disabled,
+      }))
+    bodyMode = mode === 'urlencoded' ? 'urlencoded' : 'form-data'
+    bodyEnabled = bodyFields.some((f) => f.enabled && f.key.trim())
+    // File fields aren't supported (no file-picking UI) — the request still
+    // imports with its text fields, but counts as a partial import.
+    if (fileFields.length > 0) skipped = true
   } else {
-    // formdata / file / graphql / etc. — not supported by this client.
+    // graphql / file / etc. — not supported by this client.
     skipped = true
   }
 
@@ -157,7 +182,7 @@ function convertRequest(item: PostmanItem): ConvertedRequest | null {
     source.auth.type !== 'noauth' &&
     auth.type === 'none'
   ) {
-    skipped = true // an auth type we don't support (apikey, oauth2, digest, ...)
+    skipped = true // an auth type we don't support (oauth2, digest, ...)
   }
 
   const request = createEmptyRequest({
@@ -169,6 +194,8 @@ function convertRequest(item: PostmanItem): ConvertedRequest | null {
     auth,
     body,
     bodyEnabled,
+    bodyMode,
+    bodyFields: bodyFields.length ? bodyFields : [createKeyValueEntry()],
   })
 
   return { request, skipped }
@@ -190,9 +217,10 @@ function flattenItems(
 /**
  * Parse a Postman Collection (v2.x) JSON export into HttpRequest objects.
  * Nested folders are flattened. Only `raw` and `urlencoded` body modes and
- * bearer/basic auth translate fully; anything else (form-data, file bodies,
- * OAuth, API keys, ...) imports with an empty body/no auth and counts toward
- * `skippedCount` so the caller can warn without failing the whole import.
+ * bearer/basic/apikey auth translate fully; anything else (form-data, file
+ * bodies, OAuth, digest, ...) imports with an empty body/no auth and counts
+ * toward `skippedCount` so the caller can warn without failing the whole
+ * import.
  */
 export function parsePostmanCollection(
   text: string,
@@ -231,4 +259,96 @@ export function parsePostmanCollection(
     requests,
     skippedCount,
   })
+}
+
+function toPostmanAuth(auth: RequestAuth): PostmanAuth | undefined {
+  if (auth.type === 'bearer') {
+    return { type: 'bearer', bearer: [{ key: 'token', value: auth.token ?? '' }] }
+  }
+  if (auth.type === 'basic') {
+    return {
+      type: 'basic',
+      basic: [
+        { key: 'username', value: auth.username ?? '' },
+        { key: 'password', value: auth.password ?? '' },
+      ],
+    }
+  }
+  if (auth.type === 'apikey') {
+    return {
+      type: 'apikey',
+      apikey: [
+        { key: 'key', value: auth.apiKeyName ?? '' },
+        { key: 'value', value: auth.apiKeyValue ?? '' },
+        { key: 'in', value: auth.apiKeyLocation ?? 'header' },
+      ],
+    }
+  }
+  return undefined
+}
+
+function toPostmanUrl(request: HttpRequest): PostmanUrl {
+  const query = request.params
+    .filter((p) => p.key.trim())
+    .map((p) => ({ key: p.key, value: p.value, disabled: !p.enabled || undefined }))
+  const enabledQuery = query.filter((q) => !q.disabled)
+  const raw = enabledQuery.length
+    ? `${request.url}${request.url.includes('?') ? '&' : '?'}${enabledQuery
+        .map((q) => `${q.key}=${q.value}`)
+        .join('&')}`
+    : request.url
+  return { raw, query }
+}
+
+function toPostmanBody(request: HttpRequest): PostmanBody | undefined {
+  if (!request.bodyEnabled) return undefined
+
+  const mode = request.bodyMode ?? 'raw'
+  if (mode === 'raw') {
+    return request.body.trim() ? { mode: 'raw', raw: request.body } : undefined
+  }
+
+  const fields = (request.bodyFields ?? [])
+    .filter((f) => f.enabled && f.key.trim())
+    .map((f) => ({ key: f.key, value: f.value }))
+  if (fields.length === 0) return undefined
+
+  return mode === 'urlencoded'
+    ? { mode: 'urlencoded', urlencoded: fields }
+    : { mode: 'formdata', formdata: fields }
+}
+
+/**
+ * Export saved requests as a Postman Collection v2.1 JSON document — the
+ * mirror image of `parsePostmanCollection`. Auth round-trips for
+ * bearer/basic/apikey; `none` omits the `auth` field entirely, matching
+ * Postman's own export shape.
+ */
+export function exportPostmanCollection(
+  name: string,
+  requests: HttpRequest[],
+) {
+  return {
+    info: {
+      name,
+      schema:
+        'https://schema.getpostman.com/json/collection/v2.1.0/collection.json',
+    },
+    item: requests.map((request) => {
+      const body = toPostmanBody(request)
+      const auth = toPostmanAuth(request.auth)
+      return {
+        name: request.name,
+        request: {
+          method: request.method,
+          header: request.headers
+            .filter((h) => h.enabled && h.key.trim())
+            .map((h) => ({ key: h.key, value: h.value })),
+          url: toPostmanUrl(request),
+          ...(body ? { body } : {}),
+          ...(auth ? { auth } : {}),
+        },
+      }
+    }),
+  }
 }

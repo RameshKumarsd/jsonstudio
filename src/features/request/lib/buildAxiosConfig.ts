@@ -38,6 +38,42 @@ function resolveUrl(url: string, proxyPrefix?: string): string {
   return `${prefix}${url}`
 }
 
+interface BuiltBody {
+  data: unknown
+  /** null for form-data — the browser/axios must set the multipart boundary
+   * itself, which only happens when no Content-Type header is present. */
+  contentType: string | null
+}
+
+/**
+ * Build the outgoing body for whichever mode the request is in. Returns
+ * null when there's nothing to send (raw body empty, or no enabled fields
+ * in urlencoded/form-data mode) — the caller treats null the same as "no
+ * body" regardless of mode.
+ */
+function buildBody(request: HttpRequest): BuiltBody | null {
+  const mode = request.bodyMode ?? 'raw'
+
+  if (mode === 'raw') {
+    if (!request.body.trim()) return null
+    return { data: request.body, contentType: 'application/json' }
+  }
+
+  const fields = enabledEntries(request.bodyFields ?? [])
+  if (fields.length === 0) return null
+
+  if (mode === 'urlencoded') {
+    const data = fields
+      .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+      .join('&')
+    return { data, contentType: 'application/x-www-form-urlencoded' }
+  }
+
+  const formData = new FormData()
+  for (const [key, value] of fields) formData.append(key, value)
+  return { data: formData, contentType: null }
+}
+
 /**
  * Pure: turn an HttpRequest into an Axios config. `validateStatus` always
  * resolves so 4xx/5xx responses come back as data (not thrown) — the
@@ -51,6 +87,9 @@ export function buildAxiosConfig(
   const headers: Record<string, string> = Object.fromEntries(
     enabledEntries(request.headers),
   )
+  const params: Record<string, string> = Object.fromEntries(
+    enabledEntries(request.params),
+  )
 
   if (request.auth.type === 'bearer' && request.auth.token) {
     headers.Authorization = `Bearer ${request.auth.token}`
@@ -60,25 +99,34 @@ export function buildAxiosConfig(
   ) {
     const credentials = `${request.auth.username ?? ''}:${request.auth.password ?? ''}`
     headers.Authorization = `Basic ${btoa(credentials)}`
+  } else if (
+    request.auth.type === 'apikey' &&
+    request.auth.apiKeyName?.trim()
+  ) {
+    if (request.auth.apiKeyLocation === 'query') {
+      params[request.auth.apiKeyName] = request.auth.apiKeyValue ?? ''
+    } else {
+      headers[request.auth.apiKeyName] = request.auth.apiKeyValue ?? ''
+    }
   }
 
-  const hasBody =
-    request.bodyEnabled &&
-    METHODS_WITH_BODY.includes(request.method) &&
-    request.body.trim().length > 0
+  const builtBody =
+    request.bodyEnabled && METHODS_WITH_BODY.includes(request.method)
+      ? buildBody(request)
+      : null
 
   if (
-    hasBody &&
+    builtBody?.contentType &&
     !Object.keys(headers).some((k) => k.toLowerCase() === 'content-type')
   ) {
-    headers['Content-Type'] = 'application/json'
+    headers['Content-Type'] = builtBody.contentType
   }
 
   const config: AxiosRequestConfig = {
     method: request.method,
-    params: Object.fromEntries(enabledEntries(request.params)),
+    params,
     headers,
-    data: hasBody ? request.body : undefined,
+    data: builtBody?.data,
     timeout: REQUEST_TIMEOUT_MS,
     validateStatus: () => true,
     responseType: 'text',

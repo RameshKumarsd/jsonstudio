@@ -61,4 +61,29 @@ describe('toCurl', () => {
     })
     expect(toCurl(request)).toContain("-H 'Authorization: Bearer xyz'")
   })
+
+  it('adds a header for API Key auth in the header location', () => {
+    const request = createEmptyRequest({
+      auth: {
+        type: 'apikey',
+        apiKeyName: 'X-Api-Key',
+        apiKeyValue: 'secret',
+        apiKeyLocation: 'header',
+      },
+    })
+    expect(toCurl(request)).toContain("-H 'X-Api-Key: secret'")
+  })
+
+  it('adds a query param for API Key auth in the query location', () => {
+    const request = createEmptyRequest({
+      url: 'https://api.example.com/things',
+      auth: {
+        type: 'apikey',
+        apiKeyName: 'api_key',
+        apiKeyValue: 'secret',
+        apiKeyLocation: 'query',
+      },
+    })
+    expect(toCurl(request)).toContain("things?api_key=secret'")
+  })
 })

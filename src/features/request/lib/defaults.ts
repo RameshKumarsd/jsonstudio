@@ -19,6 +19,8 @@ export function createEmptyRequest(
     auth: { type: 'none' },
     body: '',
     bodyEnabled: false,
+    bodyMode: 'raw',
+    bodyFields: [createKeyValueEntry()],
     ...overrides,
   }
 }
