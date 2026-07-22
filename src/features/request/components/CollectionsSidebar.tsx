@@ -386,9 +386,20 @@ export function CollectionsSidebar() {
       </div>
 
       <div className="space-y-1 border-t p-2">
-        <label className="text-[11px] text-muted-foreground">
-          CORS proxy (optional)
-        </label>
+        <div className="flex items-center justify-between">
+          <label className="text-[11px] text-muted-foreground">
+            CORS proxy (optional)
+          </label>
+          <button
+            type="button"
+            onClick={() =>
+              setProxyPrefix(`${window.location.origin}/api/proxy?url={url}`)
+            }
+            className="text-[11px] text-primary hover:underline"
+          >
+            Use built-in proxy
+          </button>
+        </div>
         <Input
           value={proxyPrefix}
           placeholder="https://corsproxy.io/?{url}"
